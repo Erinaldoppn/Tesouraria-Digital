@@ -1,0 +1,7 @@
+{
+  "name": "3IPI Natal - Gestão Financeira",
+  "description": "Sistema de relatório financeiro para a Igreja 3IPI de Natal, com dashboard interativo, CRUD de movimentações e insights via IA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
