@@ -6,8 +6,10 @@ import {
   CheckCircle2, Hash, RotateCcw, FileSpreadsheet,
   ChevronLeft, ChevronRight, ListOrdered, AlertTriangle,
   Calculator, ArrowUpRight, ArrowDownRight, PieChart, Printer,
-  Image,
-  Lock
+  Eye,
+  Lock,
+  Paperclip,
+  FileUp
 } from 'lucide-react';
 import { 
   getTransactions, 
@@ -23,6 +25,7 @@ const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   
   const user = getCurrentUser();
   const isAdmin = user?.role === 'admin';
@@ -39,9 +42,8 @@ const Transactions: React.FC = () => {
   const [viewingComprovante, setViewingComprovante] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showPdfOptions, setShowPdfOptions] = useState(false);
-  const [pdfIncludeImages, setPdfIncludeImages] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [activeTab, setActiveTab] = useState<'dados' | 'comprovante'>('dados');
 
   const [formData, setFormData] = useState<Partial<Transaction>>({
     movimento: '',
@@ -80,6 +82,7 @@ const Transactions: React.FC = () => {
 
   const handleOpenModal = (transaction?: Transaction) => {
     if (!isAdmin) return;
+    setActiveTab('dados');
     if (transaction) {
       setEditingTransaction(transaction);
       setFormData({ ...transaction });
@@ -99,6 +102,56 @@ const Transactions: React.FC = () => {
       });
     }
     setIsModalOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, comprovante: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        const lines = text.split('\n');
+        const newItems: Transaction[] = [];
+        const existing = getTransactions();
+        let nextId = existing.length > 0 ? Math.max(...existing.map(t => parseInt(t.id) || 0)) + 1 : 1;
+
+        // Pula cabeçalho se houver
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',');
+          if (cols.length >= 5) {
+            newItems.push({
+              id: (nextId++).toString(),
+              movimento: cols[0]?.trim(),
+              tipo: (cols[1]?.trim() as TransactionType) || 'Entrada',
+              valor: parseFloat(cols[2]?.trim()) || 0,
+              metodo: (cols[3]?.trim() as PaymentMethod) || 'Pix',
+              data: cols[4]?.trim() || new Date().toISOString().split('T')[0],
+              mes: cols[5]?.trim() || MONTHS[new Date().getMonth()],
+              responsavel: cols[6]?.trim() || 'Importado',
+              comprovante: ''
+            });
+          }
+        }
+        
+        if (newItems.length > 0) {
+          importTransactions([...existing, ...newItems]);
+          loadData();
+          alert(`${newItems.length} registros importados com sucesso!`);
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -134,6 +187,24 @@ const Transactions: React.FC = () => {
         </div>
         
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          {isAdmin && (
+            <>
+              <button 
+                onClick={() => csvInputRef.current?.click()} 
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-blue-100 dark:border-slate-800 text-blue-800 dark:text-blue-400 px-5 py-3.5 rounded-2xl font-black hover:bg-blue-50 transition-all shadow-md active:scale-95"
+              >
+                <FileUp size={20} /> <span className="text-xs uppercase">Importar CSV</span>
+              </button>
+              <input 
+                type="file" 
+                ref={csvInputRef} 
+                className="hidden" 
+                accept=".csv" 
+                onChange={handleImportCSV} 
+              />
+            </>
+          )}
+
           {isAdmin ? (
             <button onClick={() => handleOpenModal()} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-800 text-white px-5 py-3.5 rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl active:scale-95 border-b-4 border-blue-950">
               <Plus size={20} strokeWidth={3} /> ADICIONAR
@@ -143,9 +214,6 @@ const Transactions: React.FC = () => {
               <Lock size={16} /> <span className="text-xs font-black uppercase">Leitura Apenas</span>
             </div>
           )}
-          <button onClick={() => setShowPdfOptions(true)} className="p-3.5 bg-white dark:bg-slate-900 border-2 border-blue-100 dark:border-slate-800 rounded-2xl text-blue-800 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 shadow-md flex items-center gap-2 transition-colors">
-            <Printer size={24} /> <span className="hidden lg:block font-bold text-xs uppercase">Relatório</span>
-          </button>
         </div>
       </div>
 
@@ -155,11 +223,11 @@ const Transactions: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-blue-900 dark:bg-slate-800 text-white transition-colors">
               <tr>
-                <th className="px-6 py-5 text-[11px] font-black uppercase">ID / Período</th>
+                <th className="px-6 py-5 text-[11px] font-black uppercase">ID / Data</th>
                 <th className="px-6 py-5 text-[11px] font-black uppercase">Descrição</th>
-                <th className="px-6 py-5 text-[11px] font-black uppercase">Tipo</th>
+                <th className="px-6 py-5 text-[11px] font-black uppercase text-center">Docs</th>
                 <th className="px-6 py-5 text-[11px] font-black uppercase text-right">Valor</th>
-                {isAdmin && <th className="px-6 py-5 text-[11px] font-black uppercase text-center">Ações</th>}
+                <th className="px-6 py-5 text-[11px] font-black uppercase text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 transition-colors">
@@ -171,19 +239,42 @@ const Transactions: React.FC = () => {
                       <span className="text-sm font-bold text-gray-700 dark:text-slate-300 transition-colors">{formatDateBR(t.data)}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-slate-100 transition-colors">{t.movimento}</td>
-                  <td className="px-6 py-5">
-                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${t.tipo === 'Entrada' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{t.tipo}</span>
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-gray-900 dark:text-slate-100 transition-colors">{t.movimento}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.tipo} • {t.metodo}</p>
                   </td>
-                  <td className="px-6 py-5 text-right font-black dark:text-slate-100">{formatCurrency(t.valor)}</td>
-                  {isAdmin && (
-                    <td className="px-6 py-5 text-center">
-                      <div className="flex justify-center gap-3">
-                        <Edit3 size={18} className="text-blue-800 dark:text-blue-400 cursor-pointer hover:scale-110" onClick={() => handleOpenModal(t)} />
-                        <Trash2 size={18} className="text-red-600 dark:text-red-400 cursor-pointer hover:scale-110" onClick={() => setTransactionToDelete(t)} />
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-6 py-5 text-center">
+                    {t.comprovante ? (
+                      <button 
+                        onClick={() => setViewingComprovante(t.comprovante || null)}
+                        className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-lg hover:scale-110 transition-transform"
+                        title="Ver Comprovante"
+                      >
+                        <Paperclip size={18} />
+                      </button>
+                    ) : (
+                      <span className="text-gray-300 dark:text-slate-700">—</span>
+                    )}
+                  </td>
+                  <td className={`px-6 py-5 text-right font-black ${t.tipo === 'Entrada' ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(t.valor)}
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <div className="flex justify-center gap-3">
+                      {isAdmin ? (
+                        <>
+                          <Edit3 size={18} className="text-blue-800 dark:text-blue-400 cursor-pointer hover:scale-110" onClick={() => handleOpenModal(t)} />
+                          <Trash2 size={18} className="text-red-600 dark:text-red-400 cursor-pointer hover:scale-110" onClick={() => setTransactionToDelete(t)} />
+                        </>
+                      ) : (
+                        <Eye size={18} className="text-gray-400 cursor-pointer" onClick={() => {
+                          setEditingTransaction(t);
+                          setFormData({...t});
+                          setIsModalOpen(true);
+                        }} />
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -194,28 +285,160 @@ const Transactions: React.FC = () => {
       {/* Modal Novo/Editar */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[300] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[32px] p-8 shadow-2xl transition-colors">
-            <h2 className="text-xl font-black mb-6 uppercase dark:text-white">{editingTransaction ? 'Editar' : 'Novo'} Lançamento</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Descrição do Movimento</label>
-                 <input type="text" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.movimento} onChange={(e) => setFormData({...formData, movimento: e.target.value})} required />
-               </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Valor (R$)</label>
-                   <input type="number" step="0.01" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.valor} onChange={(e) => setFormData({...formData, valor: Number(e.target.value)})} required />
-                 </div>
-                 <div className="space-y-2">
-                   <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Data</label>
-                   <input type="date" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} required />
-                 </div>
-               </div>
-               <div className="flex gap-4 pt-4">
-                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-4 bg-gray-100 dark:bg-slate-800 dark:text-slate-400 rounded-2xl font-bold uppercase text-xs">Cancelar</button>
-                 <button type="submit" className="flex-1 p-4 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs border-b-4 border-blue-950">Salvar Lançamento</button>
-               </div>
-            </form>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl transition-colors flex flex-col max-h-[90vh]">
+            <div className="p-8 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+              <h2 className="text-xl font-black uppercase dark:text-white">
+                {isAdmin ? (editingTransaction ? 'Editar' : 'Novo') : 'Visualizar'} Lançamento
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors text-gray-400">
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex bg-gray-50 dark:bg-slate-950 px-8">
+              <button 
+                onClick={() => setActiveTab('dados')}
+                className={`px-6 py-4 font-black text-xs uppercase tracking-widest border-b-4 transition-all ${activeTab === 'dados' ? 'border-blue-800 text-blue-800 dark:text-blue-400' : 'border-transparent text-gray-400'}`}
+              >
+                Informações Gerais
+              </button>
+              <button 
+                onClick={() => setActiveTab('comprovante')}
+                className={`px-6 py-4 font-black text-xs uppercase tracking-widest border-b-4 transition-all flex items-center gap-2 ${activeTab === 'comprovante' ? 'border-blue-800 text-blue-800 dark:text-blue-400' : 'border-transparent text-gray-400'}`}
+              >
+                Comprovante {formData.comprovante && <CheckCircle2 size={14} className="text-green-500" />}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {activeTab === 'dados' ? (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Descrição do Movimento</label>
+                      <input disabled={!isAdmin} type="text" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.movimento} onChange={(e) => setFormData({...formData, movimento: e.target.value})} required />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Tipo de Fluxo</label>
+                        <select disabled={!isAdmin} className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 outline-none" value={formData.tipo} onChange={(e) => setFormData({...formData, tipo: e.target.value as TransactionType})}>
+                          <option value="Entrada">Entrada (Dízimo/Oferta)</option>
+                          <option value="Saída">Saída (Despesa)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Método</label>
+                        <select disabled={!isAdmin} className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 outline-none" value={formData.metodo} onChange={(e) => setFormData({...formData, metodo: e.target.value as PaymentMethod})}>
+                          <option value="Pix">PIX</option>
+                          <option value="Espécie">Espécie (Dinheiro)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Valor (R$)</label>
+                        <input disabled={!isAdmin} type="number" step="0.01" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.valor} onChange={(e) => setFormData({...formData, valor: Number(e.target.value)})} required />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Data</label>
+                        <input disabled={!isAdmin} type="date" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} required />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    <div className="border-4 border-dashed border-gray-100 dark:border-slate-800 rounded-3xl p-10 flex flex-col items-center justify-center text-center gap-4 bg-gray-50 dark:bg-slate-950/50">
+                      {formData.comprovante ? (
+                        <div className="relative group w-full">
+                          <img 
+                            src={formData.comprovante} 
+                            alt="Preview" 
+                            className="max-h-80 mx-auto rounded-xl shadow-lg border-2 border-white dark:border-slate-800 object-contain"
+                          />
+                          {isAdmin && (
+                            <button 
+                              type="button"
+                              onClick={() => setFormData({...formData, comprovante: ''})}
+                              className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full shadow-lg hover:bg-red-700 transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="p-4 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-full">
+                            <ImageIcon size={48} />
+                          </div>
+                          <div>
+                            <p className="font-black text-blue-900 dark:text-white uppercase tracking-tight">Anexar Comprovante</p>
+                            <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mt-1">Clique abaixo para selecionar uma foto ou print do recibo</p>
+                          </div>
+                          {isAdmin && (
+                            <button 
+                              type="button" 
+                              onClick={() => fileInputRef.current?.click()}
+                              className="bg-yellow-400 text-blue-900 px-8 py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-yellow-400/20 active:scale-95 transition-all"
+                            >
+                              Selecionar Arquivo
+                            </button>
+                          )}
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleFileChange} 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-4 bg-gray-100 dark:bg-slate-800 dark:text-slate-400 rounded-2xl font-bold uppercase text-xs">Fechar</button>
+                  {isAdmin && (
+                    <button type="submit" className="flex-1 p-4 bg-blue-900 text-white rounded-2xl font-black uppercase text-xs border-b-4 border-blue-950 shadow-xl shadow-blue-900/20 active:scale-95">
+                      {editingTransaction ? 'Salvar Alterações' : 'Confirmar Lançamento'}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Visualização de Comprovante em Tela Cheia */}
+      {viewingComprovante && (
+        <div className="fixed inset-0 z-[400] bg-black/95 flex flex-col items-center justify-center p-4">
+          <button 
+            onClick={() => setViewingComprovante(null)}
+            className="absolute top-8 right-8 text-white p-4 hover:bg-white/10 rounded-full transition-all"
+          >
+            <X size={32} />
+          </button>
+          <img 
+            src={viewingComprovante} 
+            className="max-w-full max-h-[85vh] object-contain shadow-2xl rounded-lg"
+            alt="Comprovante"
+          />
+          <div className="mt-8">
+             <button 
+               onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = viewingComprovante;
+                  link.download = `comprovante-3ipi-${Date.now()}.png`;
+                  link.click();
+               }}
+               className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-sm flex items-center gap-3 shadow-xl"
+             >
+               <Download size={20} /> Baixar Arquivo
+             </button>
           </div>
         </div>
       )}
