@@ -8,7 +8,9 @@ import {
   Church, 
   Menu, 
   X,
-  User as UserIcon
+  User as UserIcon,
+  ShieldAlert,
+  ShieldCheck
 } from 'lucide-react';
 import { getCurrentUser, setCurrentUser } from '../services/storage';
 
@@ -31,6 +33,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setCurrentUser(null);
     navigate('/login');
   };
+
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
@@ -60,11 +64,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
 
           <div className="mb-8 px-4 py-3 bg-blue-800/50 rounded-xl border border-blue-700/50 flex items-center gap-3">
-             <div className="p-2 bg-blue-700 rounded-full">
-               <UserIcon size={16} className="text-yellow-400" />
+             <div className={`p-2 rounded-full ${isAdmin ? 'bg-yellow-400 text-blue-900' : 'bg-blue-600 text-white'}`}>
+               {isAdmin ? <ShieldCheck size={16} /> : <UserIcon size={16} />}
              </div>
              <div className="overflow-hidden">
-               <p className="text-xs text-blue-300 font-bold uppercase truncate">Tesoureiro(a)</p>
+               <p className="text-[10px] text-blue-300 font-black uppercase truncate tracking-widest">
+                 {isAdmin ? 'ADMINISTRADOR' : 'TESOUREIRO'}
+               </p>
                <p className="text-sm font-bold truncate">{user?.name || 'Usuário'}</p>
              </div>
           </div>
@@ -90,10 +96,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <button 
             onClick={handleLogout}
-            className="mt-auto flex items-center gap-3 px-4 py-3 text-red-300 hover:bg-red-900/30 rounded-lg transition-colors"
+            className="mt-auto flex items-center gap-3 px-4 py-3 text-red-300 hover:bg-red-900/30 rounded-lg transition-colors font-bold uppercase tracking-widest text-[10px]"
           >
             <LogOut size={20} />
-            Sair
+            Encerrar Sessão
           </button>
         </div>
       </aside>
