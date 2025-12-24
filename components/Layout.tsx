@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,8 +9,9 @@ import {
   Menu, 
   X,
   User as UserIcon,
-  ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { getCurrentUser, setCurrentUser } from '../services/storage';
 
@@ -21,8 +22,23 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark' || 
+           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+  
   const user = getCurrentUser();
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -37,38 +53,56 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Mobile Header */}
-      <div className="md:hidden bg-blue-800 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+      <div className="md:hidden bg-blue-900 dark:bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-2">
           <Church className="text-yellow-400" />
           <span className="font-bold">3IPI Natal</span>
         </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2 bg-blue-800 dark:bg-slate-800 rounded-lg text-yellow-400"
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-blue-900 text-white transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-40 w-64 bg-blue-900 dark:bg-slate-900 text-white transform transition-transform duration-300 ease-in-out
         md:relative md:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 flex flex-col h-full">
-          <div className="hidden md:flex items-center gap-3 mb-10">
-            <div className="p-2 bg-yellow-400 rounded-lg">
-              <Church className="text-blue-900" size={24} />
+          <div className="hidden md:flex items-center justify-between mb-10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-400 rounded-lg">
+                <Church className="text-blue-900" size={24} />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight">3IPI Natal</h1>
             </div>
-            <h1 className="text-xl font-bold tracking-tight">3IPI Natal</h1>
+            
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 hover:bg-blue-800 dark:hover:bg-slate-800 rounded-xl transition-colors text-yellow-400"
+              title={isDarkMode ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
           </div>
 
-          <div className="mb-8 px-4 py-3 bg-blue-800/50 rounded-xl border border-blue-700/50 flex items-center gap-3">
+          <div className="mb-8 px-4 py-3 bg-blue-800/50 dark:bg-slate-800/50 rounded-xl border border-blue-700/50 dark:border-slate-700/50 flex items-center gap-3">
              <div className={`p-2 rounded-full ${isAdmin ? 'bg-yellow-400 text-blue-900' : 'bg-blue-600 text-white'}`}>
                {isAdmin ? <ShieldCheck size={16} /> : <UserIcon size={16} />}
              </div>
              <div className="overflow-hidden">
-               <p className="text-[10px] text-blue-300 font-black uppercase truncate tracking-widest">
+               <p className="text-[10px] text-blue-300 dark:text-slate-400 font-black uppercase truncate tracking-widest">
                  {isAdmin ? 'ADMINISTRADOR' : 'TESOUREIRO'}
                </p>
                <p className="text-sm font-bold truncate">{user?.name || 'Usuário'}</p>
@@ -82,10 +116,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
                   ${location.pathname === item.path 
                     ? 'bg-yellow-400 text-blue-900 font-bold shadow-lg shadow-yellow-400/20' 
-                    : 'hover:bg-blue-800 text-blue-100'}
+                    : 'hover:bg-blue-800 dark:hover:bg-slate-800 text-blue-100'}
                 `}
               >
                 {item.icon}
