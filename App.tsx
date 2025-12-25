@@ -4,6 +4,8 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
+import Cards from './pages/Cards';
+import Analysis from './pages/Analysis';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import { getCurrentUser } from './services/storage';
@@ -25,6 +27,22 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/cards" element={
+          <ProtectedRoute>
+            <Layout>
+              <Cards />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/analise" element={
+          <ProtectedRoute>
+            <Layout>
+              <Analysis />
             </Layout>
           </ProtectedRoute>
         } />

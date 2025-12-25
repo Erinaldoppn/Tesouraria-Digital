@@ -11,7 +11,9 @@ import {
   User as UserIcon,
   ShieldCheck,
   Sun,
-  Moon
+  Moon,
+  LayoutGrid,
+  BarChartHorizontal
 } from 'lucide-react';
 import { getCurrentUser, setCurrentUser } from '../services/storage';
 
@@ -42,6 +44,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { path: '/cards', label: 'Resumo em Cards', icon: <LayoutGrid size={20} /> },
+    { path: '/analise', label: 'Análise de Valores', icon: <BarChartHorizontal size={20} /> },
     { path: '/transacoes', label: 'Lançamentos', icon: <ReceiptText size={20} /> },
   ];
 
@@ -54,8 +58,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+      {/* Estilos para Impressão */}
+      <style>{`
+        @media print {
+          aside, nav, .print\\:hidden, button { display: none !important; }
+          main { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
+          .max-w-6xl { max-width: 100% !important; }
+          body { background: white !important; color: black !important; }
+          .bg-white, .dark\\:bg-slate-900 { background: white !important; border: 1px solid #eee !important; }
+          .text-white, .dark\\:text-white { color: black !important; }
+          .dark\\:text-blue-100, .dark\\:text-slate-100 { color: black !important; }
+        }
+      `}</style>
+
       {/* Mobile Header */}
-      <div className="md:hidden bg-blue-900 dark:bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+      <div className="md:hidden bg-blue-900 dark:bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md print:hidden">
         <div className="flex items-center gap-2">
           <Church className="text-yellow-400" />
           <span className="font-bold">3IPI Natal</span>
@@ -76,7 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-blue-900 dark:bg-slate-900 text-white transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0
+        md:relative md:translate-x-0 print:hidden
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 flex flex-col h-full">
@@ -148,7 +165,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/50 z-30 md:hidden print:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}

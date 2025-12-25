@@ -80,8 +80,42 @@ const Transactions: React.FC = () => {
     return filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredTransactions, currentPage, itemsPerPage]);
 
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  const handleExportCSV = () => {
+    const header = `3IPI Natal - Relatório Financeiro;Exportado em:;${new Date().toLocaleString('pt-BR')}\n\n`;
+    const columns = "ID;Data;Descrição;Tipo;Valor;Método;Responsável\n";
+    const rows = filteredTransactions.map(t => 
+      `"${t.id}";"${formatDateBR(t.data)}";"${t.movimento}";"${t.tipo}";"${t.valor.toFixed(2).replace('.', ',')}";"${t.metodo}";"${t.responsavel}"`
+    ).join("\n");
+    
+    // BOM para UTF-8 (Excel friendly)
+    const csvContent = "\uFEFF" + header + columns + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `financeiro-3ipi-natal-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleOpenModal = (transaction?: Transaction) => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      // If user is just viewing, allow it but don't reset responsible if editing
+      if (transaction) {
+        setEditingTransaction(transaction);
+        setFormData({ ...transaction });
+        setIsModalOpen(true);
+      }
+      return;
+    }
     setActiveTab('dados');
     if (transaction) {
       setEditingTransaction(transaction);
@@ -126,19 +160,18 @@ const Transactions: React.FC = () => {
         const existing = getTransactions();
         let nextId = existing.length > 0 ? Math.max(...existing.map(t => parseInt(t.id) || 0)) + 1 : 1;
 
-        // Pula cabeçalho se houver
         for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(',');
+          const cols = lines[i].split(/[;,]/); // Aceita ponto e vírgula ou vírgula
           if (cols.length >= 5) {
             newItems.push({
               id: (nextId++).toString(),
-              movimento: cols[0]?.trim(),
-              tipo: (cols[1]?.trim() as TransactionType) || 'Entrada',
-              valor: parseFloat(cols[2]?.trim()) || 0,
-              metodo: (cols[3]?.trim() as PaymentMethod) || 'Pix',
-              data: cols[4]?.trim() || new Date().toISOString().split('T')[0],
-              mes: cols[5]?.trim() || MONTHS[new Date().getMonth()],
-              responsavel: cols[6]?.trim() || 'Importado',
+              movimento: cols[0]?.replace(/"/g, '').trim(),
+              tipo: (cols[1]?.replace(/"/g, '').trim() as TransactionType) || 'Entrada',
+              valor: parseFloat(cols[2]?.replace(/"/g, '').replace(',', '.')) || 0,
+              metodo: (cols[3]?.replace(/"/g, '').trim() as PaymentMethod) || 'Pix',
+              data: cols[4]?.replace(/"/g, '').trim() || new Date().toISOString().split('T')[0],
+              mes: cols[5]?.replace(/"/g, '').trim() || MONTHS[new Date().getMonth()],
+              responsavel: cols[6]?.replace(/"/g, '').trim() || 'Importado',
               comprovante: ''
             });
           }
@@ -152,6 +185,10 @@ const Transactions: React.FC = () => {
       };
       reader.readAsText(file);
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -172,11 +209,6 @@ const Transactions: React.FC = () => {
   };
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const formatDateBR = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y}`;
-  };
 
   return (
     <div className="space-y-6 pb-20 transition-colors">
@@ -186,7 +218,22 @@ const Transactions: React.FC = () => {
           <p className="text-blue-700 dark:text-blue-400 font-semibold text-sm uppercase tracking-wider transition-colors">3IPI Natal - Tesouraria</p>
         </div>
         
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto print:hidden">
+          <button 
+            onClick={handleExportCSV}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-5 py-3.5 rounded-2xl font-black hover:bg-slate-50 transition-all shadow-md active:scale-95"
+            title="Exportar para Planilha"
+          >
+            <FileSpreadsheet size={20} /> <span className="text-xs uppercase">Exportar CSV</span>
+          </button>
+
+          <button 
+            onClick={handlePrint} 
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-5 py-3.5 rounded-2xl font-black hover:bg-slate-50 transition-all shadow-md active:scale-95"
+          >
+            <Printer size={20} /> <span className="text-xs uppercase">PDF</span>
+          </button>
+
           {isAdmin && (
             <>
               <button 
@@ -217,21 +264,21 @@ const Transactions: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabela */}
+      {/* Tabela de Lançamentos */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead className="bg-blue-900 dark:bg-slate-800 text-white transition-colors">
               <tr>
                 <th className="px-6 py-5 text-[11px] font-black uppercase">ID / Data</th>
                 <th className="px-6 py-5 text-[11px] font-black uppercase">Descrição</th>
-                <th className="px-6 py-5 text-[11px] font-black uppercase text-center">Docs</th>
+                <th className="px-6 py-5 text-[11px] font-black uppercase text-center print:hidden">Docs</th>
                 <th className="px-6 py-5 text-[11px] font-black uppercase text-right">Valor</th>
-                <th className="px-6 py-5 text-[11px] font-black uppercase text-center">Ações</th>
+                <th className="px-6 py-5 text-[11px] font-black uppercase text-center print:hidden">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 transition-colors">
-              {paginatedTransactions.map((t) => (
+              {(filteredTransactions.length > 0 ? (isAdmin ? paginatedTransactions : filteredTransactions) : []).map((t) => (
                 <tr key={t.id} className="hover:bg-blue-50 dark:hover:bg-slate-800/50 transition-all border-l-4 border-l-transparent hover:border-l-blue-800">
                   <td className="px-6 py-5 whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -241,9 +288,9 @@ const Transactions: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <p className="font-bold text-gray-900 dark:text-slate-100 transition-colors">{t.movimento}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.tipo} • {t.metodo}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.tipo} • {t.metodo} • Resp: {t.responsavel}</p>
                   </td>
-                  <td className="px-6 py-5 text-center">
+                  <td className="px-6 py-5 text-center print:hidden">
                     {t.comprovante ? (
                       <button 
                         onClick={() => setViewingComprovante(t.comprovante || null)}
@@ -259,7 +306,7 @@ const Transactions: React.FC = () => {
                   <td className={`px-6 py-5 text-right font-black ${t.tipo === 'Entrada' ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                     {formatCurrency(t.valor)}
                   </td>
-                  <td className="px-6 py-5 text-center">
+                  <td className="px-6 py-5 text-center print:hidden">
                     <div className="flex justify-center gap-3">
                       {isAdmin ? (
                         <>
@@ -267,20 +314,30 @@ const Transactions: React.FC = () => {
                           <Trash2 size={18} className="text-red-600 dark:text-red-400 cursor-pointer hover:scale-110" onClick={() => setTransactionToDelete(t)} />
                         </>
                       ) : (
-                        <Eye size={18} className="text-gray-400 cursor-pointer" onClick={() => {
-                          setEditingTransaction(t);
-                          setFormData({...t});
-                          setIsModalOpen(true);
-                        }} />
+                        <Eye size={18} className="text-gray-400 cursor-pointer" onClick={() => handleOpenModal(t)} />
                       )}
                     </div>
                   </td>
                 </tr>
               ))}
+              {filteredTransactions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-20 text-center text-gray-400 dark:text-slate-600 font-bold uppercase tracking-widest text-xs">
+                    Nenhum lançamento encontrado para os filtros aplicados.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Paginação - Oculta no PDF */}
+      {!isAdmin && filteredTransactions.length > 0 && (
+        <div className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest print:hidden">
+          Exibindo todos os {filteredTransactions.length} registros filtrados.
+        </div>
+      )}
 
       {/* Modal Novo/Editar */}
       {isModalOpen && (
@@ -295,7 +352,6 @@ const Transactions: React.FC = () => {
               </button>
             </div>
 
-            {/* Tabs */}
             <div className="flex bg-gray-50 dark:bg-slate-950 px-8">
               <button 
                 onClick={() => setActiveTab('dados')}
@@ -318,6 +374,11 @@ const Transactions: React.FC = () => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Descrição do Movimento</label>
                       <input disabled={!isAdmin} type="text" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.movimento} onChange={(e) => setFormData({...formData, movimento: e.target.value})} required />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Responsável pelo Lançamento</label>
+                      <input disabled={!isAdmin} type="text" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.responsavel} onChange={(e) => setFormData({...formData, responsavel: e.target.value})} required />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -459,6 +520,21 @@ const Transactions: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Rodapé de Impressão (PDF) */}
+      <div className="hidden print:block mt-20 text-center border-t border-slate-300 pt-8">
+         <p className="text-sm font-bold uppercase text-slate-900">3IPI Natal - Relatório de Movimentação Financeira</p>
+         <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Documento gerado eletronicamente em {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
+         
+         <div className="grid grid-cols-2 gap-20 mt-20 px-10">
+            <div className="border-t-2 border-slate-300 pt-4">
+               <p className="text-[10px] font-black uppercase text-slate-500">Assinatura Tesouraria</p>
+            </div>
+            <div className="border-t-2 border-slate-300 pt-4">
+               <p className="text-[10px] font-black uppercase text-slate-500">Assinatura Conselho</p>
+            </div>
+         </div>
+      </div>
     </div>
   );
 };

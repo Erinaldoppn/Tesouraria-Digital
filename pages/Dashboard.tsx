@@ -66,6 +66,12 @@ const Dashboard: React.FC = () => {
 
   const handleRefresh = () => setTransactions(getTransactions());
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  };
 
   return (
     <div className="space-y-6 pb-10">
@@ -230,7 +236,7 @@ const Dashboard: React.FC = () => {
                  </div>
                  <div>
                    <p className="font-black text-gray-900 dark:text-white leading-none mb-1 uppercase tracking-tight transition-colors">{t.movimento}</p>
-                   <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest">{t.data} • {t.metodo}</p>
+                   <p className="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-widest">{formatDateBR(t.data)} • {t.metodo}</p>
                  </div>
                </div>
                <div className="text-right">
