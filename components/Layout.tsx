@@ -61,18 +61,62 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Estilos para Impressão */}
       <style>{`
         @media print {
-          aside, nav, .print\\:hidden, button { display: none !important; }
-          main { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
-          .max-w-6xl { max-width: 100% !important; }
-          body { background: white !important; color: black !important; }
-          .bg-white, .dark\\:bg-slate-900 { background: white !important; border: 1px solid #eee !important; }
-          .text-white, .dark\\:text-white { color: black !important; }
-          .dark\\:text-blue-100, .dark\\:text-slate-100 { color: black !important; }
+          /* Esconder elementos de interface */
+          aside, nav, .print\\:hidden, button, header, .mobile-header { 
+            display: none !important; 
+          }
+          
+          /* Forçar cores e fundos */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* Reset de Layout para Impressão */
+          html, body, #root, .min-h-screen {
+            height: auto !important;
+            overflow: visible !important;
+            background: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          main { 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            width: 100% !important; 
+            background: white !important; 
+            overflow: visible !important;
+            display: block !important;
+            position: static !important;
+          }
+
+          .max-w-6xl { 
+            max-width: 100% !important; 
+            width: 100% !important;
+          }
+
+          /* Garantir que tabelas e cards não quebrem no meio de páginas de forma estranha */
+          .bg-white, .dark\\:bg-slate-900 { 
+            background: white !important; 
+            border: 1px solid #eee !important; 
+            box-shadow: none !important;
+            page-break-inside: avoid;
+          }
+          
+          .text-white, .dark\\:text-white, .dark\\:text-blue-100, .dark\\:text-slate-100 { 
+            color: black !important; 
+          }
+
+          h1, h2, h3, p {
+            color: black !important;
+          }
         }
       `}</style>
 
       {/* Mobile Header */}
-      <div className="md:hidden bg-blue-900 dark:bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md print:hidden">
+      <div className="md:hidden bg-blue-900 dark:bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50 shadow-md print:hidden mobile-header">
         <div className="flex items-center gap-2">
           <Church className="text-yellow-400" />
           <span className="font-bold">3IPI Natal</span>
@@ -156,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto main-content-area">
         <div className="max-w-6xl mx-auto">
           {children}
         </div>

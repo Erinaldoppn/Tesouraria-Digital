@@ -37,7 +37,10 @@ const Analysis: React.FC = () => {
   }, [incomes, expenses]);
 
   const handlePrint = () => {
-    window.print();
+    // Timeout pequeno para garantir que o estado da UI esteja estável
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -63,6 +66,7 @@ const Analysis: React.FC = () => {
         </div>
         
         <button 
+          type="button"
           onClick={handlePrint}
           className="print:hidden flex items-center gap-2 bg-blue-900 text-white px-6 py-3 rounded-2xl font-black hover:bg-blue-800 transition-all shadow-xl active:scale-95 border-b-4 border-blue-950 uppercase text-xs tracking-widest"
         >
@@ -136,7 +140,7 @@ const Analysis: React.FC = () => {
         </div>
       </div>
 
-      {/* Listagem Detalhada - SEPARADA */}
+      {/* Listagem Detalhada */}
       <div className="space-y-6 print:space-y-12">
         {/* Entradas */}
         <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
@@ -253,6 +257,11 @@ const Analysis: React.FC = () => {
           <p className="text-[10px] font-black uppercase text-slate-500">Conselho da Igreja</p>
           <p className="text-[8px] text-slate-400 mt-1">Aprovação de Contas</p>
         </div>
+      </div>
+
+      {/* Rodapé de Documento */}
+      <div className="hidden print:block fixed bottom-0 left-0 right-0 text-center py-4 border-t border-gray-100">
+         <p className="text-[8px] text-gray-400 uppercase tracking-widest">3IPI Natal - Relatório Gerencial Gerado via Tesouraria Digital</p>
       </div>
     </div>
   );
