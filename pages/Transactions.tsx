@@ -10,7 +10,9 @@ import {
   Lock,
   Paperclip,
   FileUp,
-  MessageSquare
+  MessageSquare,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { 
   getTransactions, 
@@ -60,7 +62,11 @@ const Transactions: React.FC = () => {
   });
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterType, filterMethod, startDate, endDate]);
+  
+  // Resetar para página 1 ao filtrar ou buscar
+  useEffect(() => { 
+    setCurrentPage(1); 
+  }, [searchTerm, filterType, filterMethod, startDate, endDate, itemsPerPage]);
 
   const loadData = () => { setTransactions([...getTransactions()]); };
 
@@ -75,14 +81,20 @@ const Transactions: React.FC = () => {
     if (filterMethod !== 'Todos') result = result.filter(t => t.metodo === filterMethod);
     if (startDate) result = result.filter(t => t.data >= startDate);
     if (endDate) result = result.filter(t => t.data <= endDate);
-    return result;
+    
+    // Ordenar por data decrescente (mais recentes primeiro)
+    return result.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
   }, [transactions, searchTerm, filterType, filterMethod, startDate, endDate]);
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  
   const paginatedTransactions = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredTransactions, currentPage, itemsPerPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredTransactions.length);
 
   const formatDateBR = (dateStr: string) => {
     if (!dateStr) return '';
@@ -225,6 +237,14 @@ const Transactions: React.FC = () => {
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  // Funções de Paginação
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="space-y-6 pb-20 transition-colors">
       <style>{`
@@ -294,6 +314,40 @@ const Transactions: React.FC = () => {
         </div>
       </div>
 
+      {/* Filtros e Busca */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 print:hidden">
+        <div className="flex-1 relative">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+           <input 
+             type="text" 
+             placeholder="Buscar lançamento..." 
+             className="w-full pl-12 pr-4 py-3 rounded-2xl bg-gray-50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-600 outline-none transition-all dark:text-white"
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+           />
+        </div>
+        <div className="flex gap-2">
+           <select 
+             className="px-4 py-3 rounded-2xl bg-gray-50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-600 outline-none transition-all font-bold text-xs uppercase dark:text-white"
+             value={filterType}
+             onChange={(e) => setFilterType(e.target.value)}
+           >
+             <option value="Todos">Todos Fluxos</option>
+             <option value="Entrada">Entradas</option>
+             <option value="Saída">Saídas</option>
+           </select>
+           <select 
+             className="px-4 py-3 rounded-2xl bg-gray-50 dark:bg-slate-950 border-2 border-transparent focus:border-blue-600 outline-none transition-all font-bold text-xs uppercase dark:text-white"
+             value={filterMethod}
+             onChange={(e) => setFilterMethod(e.target.value)}
+           >
+             <option value="Todos">Todos Métodos</option>
+             <option value="Pix">PIX</option>
+             <option value="Espécie">Espécie</option>
+           </select>
+        </div>
+      </div>
+
       {/* Tabela de Lançamentos */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
         <div className="overflow-x-auto">
@@ -308,7 +362,7 @@ const Transactions: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 transition-colors">
-              {(filteredTransactions.length > 0 ? (isAdmin ? paginatedTransactions : filteredTransactions) : []).map((t) => (
+              {paginatedTransactions.map((t) => (
                 <tr 
                   key={t.id} 
                   className={`
@@ -372,6 +426,91 @@ const Transactions: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Footer da Tabela com Paginação */}
+        <div className="px-6 py-5 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 print:hidden">
+           <div className="flex items-center gap-4">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                Mostrando {startIndex} - {endIndex} de {filteredTransactions.length} lançamentos
+              </p>
+              <div className="h-4 w-[1px] bg-gray-200 dark:bg-slate-800 hidden md:block" />
+              <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Itens:</span>
+                 <select 
+                   className="bg-transparent text-[10px] font-black uppercase text-blue-800 dark:text-blue-400 outline-none cursor-pointer"
+                   value={itemsPerPage}
+                   onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                 >
+                   <option value={10}>10</option>
+                   <option value={25}>25</option>
+                   <option value={50}>50</option>
+                   <option value={100}>100</option>
+                 </select>
+              </div>
+           </div>
+
+           <div className="flex items-center gap-1">
+              <button 
+                onClick={() => goToPage(1)} 
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-gray-400 disabled:opacity-20 transition-all"
+                title="Primeira Página"
+              >
+                <ChevronsLeft size={16} />
+              </button>
+              <button 
+                onClick={() => goToPage(currentPage - 1)} 
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-gray-400 disabled:opacity-20 transition-all"
+                title="Anterior"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <div className="flex items-center gap-1 px-2">
+                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = currentPage;
+                    if (currentPage <= 3) pageNum = i + 1;
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = currentPage - 2 + i;
+
+                    if (pageNum < 1 || pageNum > totalPages) return null;
+
+                    return (
+                      <button 
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`
+                          w-8 h-8 rounded-lg text-[10px] font-black transition-all
+                          ${currentPage === pageNum 
+                            ? 'bg-blue-800 text-white shadow-lg shadow-blue-800/20' 
+                            : 'text-gray-400 hover:bg-white dark:hover:bg-slate-800'}
+                        `}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                 })}
+              </div>
+
+              <button 
+                onClick={() => goToPage(currentPage + 1)} 
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-gray-400 disabled:opacity-20 transition-all"
+                title="Próxima"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button 
+                onClick={() => goToPage(totalPages)} 
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-gray-400 disabled:opacity-20 transition-all"
+                title="Última Página"
+              >
+                <ChevronsRight size={16} />
+              </button>
+           </div>
         </div>
       </div>
 
