@@ -12,6 +12,7 @@ export interface Transaction {
   mes: string;
   responsavel: string;
   comprovante?: string; // Base64 or URL
+  observacoes?: string;
 }
 
 export interface User {

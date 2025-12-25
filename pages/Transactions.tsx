@@ -9,7 +9,8 @@ import {
   Eye,
   Lock,
   Paperclip,
-  FileUp
+  FileUp,
+  MessageSquare
 } from 'lucide-react';
 import { 
   getTransactions, 
@@ -54,6 +55,7 @@ const Transactions: React.FC = () => {
     mes: MONTHS[new Date().getMonth()],
     responsavel: '',
     comprovante: '',
+    observacoes: '',
   });
 
   useEffect(() => { loadData(); }, []);
@@ -65,6 +67,7 @@ const Transactions: React.FC = () => {
     let result = transactions.filter(t => 
       t.movimento.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.observacoes && t.observacoes.toLowerCase().includes(searchTerm.toLowerCase())) ||
       t.id.toString().includes(searchTerm)
     );
     if (filterType !== 'Todos') result = result.filter(t => t.tipo === filterType);
@@ -88,9 +91,9 @@ const Transactions: React.FC = () => {
 
   const handleExportCSV = () => {
     const header = `3IPI Natal - Relatório Financeiro;Exportado em:;${new Date().toLocaleString('pt-BR')}\n\n`;
-    const columns = "ID;Data;Descrição;Tipo;Valor;Método;Responsável\n";
+    const columns = "ID;Data;Descrição;Tipo;Valor;Método;Responsável;Observações\n";
     const rows = filteredTransactions.map(t => 
-      `"${t.id}";"${formatDateBR(t.data)}";"${t.movimento}";"${t.tipo}";"${t.valor.toFixed(2).replace('.', ',')}";"${t.metodo}";"${t.responsavel}"`
+      `"${t.id}";"${formatDateBR(t.data)}";"${t.movimento}";"${t.tipo}";"${t.valor.toFixed(2).replace('.', ',')}";"${t.metodo}";"${t.responsavel}";"${t.observacoes || ''}"`
     ).join("\n");
     
     // BOM para UTF-8 (Excel friendly)
@@ -108,7 +111,6 @@ const Transactions: React.FC = () => {
 
   const handleOpenModal = (transaction?: Transaction) => {
     if (!isAdmin) {
-      // If user is just viewing, allow it but don't reset responsible if editing
       if (transaction) {
         setEditingTransaction(transaction);
         setFormData({ ...transaction });
@@ -133,6 +135,7 @@ const Transactions: React.FC = () => {
         mes: MONTHS[new Date().getMonth()],
         responsavel: user?.name || '',
         comprovante: '',
+        observacoes: '',
       });
     }
     setIsModalOpen(true);
@@ -161,7 +164,7 @@ const Transactions: React.FC = () => {
         let nextId = existing.length > 0 ? Math.max(...existing.map(t => parseInt(t.id) || 0)) + 1 : 1;
 
         for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(/[;,]/); // Aceita ponto e vírgula ou vírgula
+          const cols = lines[i].split(/[;,]/);
           if (cols.length >= 5) {
             newItems.push({
               id: (nextId++).toString(),
@@ -172,6 +175,7 @@ const Transactions: React.FC = () => {
               data: cols[4]?.replace(/"/g, '').trim() || new Date().toISOString().split('T')[0],
               mes: cols[5]?.replace(/"/g, '').trim() || MONTHS[new Date().getMonth()],
               responsavel: cols[6]?.replace(/"/g, '').trim() || 'Importado',
+              observacoes: cols[7]?.replace(/"/g, '').trim() || '',
               comprovante: ''
             });
           }
@@ -288,7 +292,14 @@ const Transactions: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <p className="font-bold text-gray-900 dark:text-slate-100 transition-colors">{t.movimento}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.tipo} • {t.metodo} • Resp: {t.responsavel}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.tipo} • {t.metodo} • Resp: {t.responsavel}</p>
+                      {t.observacoes && (
+                        <div className="p-1 bg-yellow-100 dark:bg-yellow-900/40 rounded text-yellow-700 dark:text-yellow-400" title={t.observacoes}>
+                          <MessageSquare size={10} />
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-5 text-center print:hidden">
                     {t.comprovante ? (
@@ -331,13 +342,6 @@ const Transactions: React.FC = () => {
           </table>
         </div>
       </div>
-
-      {/* Paginação - Oculta no PDF */}
-      {!isAdmin && filteredTransactions.length > 0 && (
-        <div className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest print:hidden">
-          Exibindo todos os {filteredTransactions.length} registros filtrados.
-        </div>
-      )}
 
       {/* Modal Novo/Editar */}
       {isModalOpen && (
@@ -407,6 +411,18 @@ const Transactions: React.FC = () => {
                         <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Data</label>
                         <input disabled={!isAdmin} type="date" className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} required />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-blue-900 dark:text-slate-400 uppercase tracking-widest px-1">Observações</label>
+                      <textarea 
+                        disabled={!isAdmin} 
+                        rows={3}
+                        className="w-full p-4 border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white rounded-2xl focus:border-blue-600 transition-all outline-none resize-none" 
+                        placeholder="Detalhes adicionais sobre este lançamento..."
+                        value={formData.observacoes} 
+                        onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
+                      />
                     </div>
                   </div>
                 ) : (
