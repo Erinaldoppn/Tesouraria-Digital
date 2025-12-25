@@ -25,6 +25,7 @@ import { MONTHS } from '../constants';
 const Transactions: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   
@@ -198,8 +199,18 @@ const Transactions: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
-    saveTransaction({ ...formData as Transaction, valor: Number(formData.valor) });
+    
+    const isNew = !editingTransaction;
+    const transactionId = formData.id || Date.now().toString();
+    
+    saveTransaction({ ...formData as Transaction, id: transactionId, valor: Number(formData.valor) });
     loadData();
+    
+    if (isNew) {
+      setNewlyAddedId(transactionId);
+      setTimeout(() => setNewlyAddedId(null), 3000);
+    }
+    
     setShowSuccess(true);
     setTimeout(() => { setShowSuccess(false); setIsModalOpen(false); }, 1200);
   };
@@ -216,6 +227,21 @@ const Transactions: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 transition-colors">
+      <style>{`
+        @keyframes highlight-pulse {
+          0% { background-color: transparent; }
+          20% { background-color: rgba(59, 130, 246, 0.2); }
+          100% { background-color: transparent; }
+        }
+        .animate-new-row {
+          animation: highlight-pulse 3s ease-in-out;
+        }
+        .dark .animate-new-row {
+          animation: highlight-pulse 3s ease-in-out;
+          background-color: rgba(59, 130, 246, 0.1);
+        }
+      `}</style>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors">Lançamentos Financeiros</h1>
@@ -283,7 +309,13 @@ const Transactions: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 transition-colors">
               {(filteredTransactions.length > 0 ? (isAdmin ? paginatedTransactions : filteredTransactions) : []).map((t) => (
-                <tr key={t.id} className="hover:bg-blue-50 dark:hover:bg-slate-800/50 transition-all border-l-4 border-l-transparent hover:border-l-blue-800">
+                <tr 
+                  key={t.id} 
+                  className={`
+                    hover:bg-blue-50 dark:hover:bg-slate-800/50 transition-all border-l-4 
+                    ${t.id === newlyAddedId ? 'animate-new-row border-l-blue-500' : 'border-l-transparent hover:border-l-blue-800'}
+                  `}
+                >
                   <td className="px-6 py-5 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <span className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-black text-[10px]">#{t.id}</span>

@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  Cell, LabelList 
+  Cell, LabelList, Legend
 } from 'recharts';
 import { 
   Printer, 
@@ -11,21 +11,47 @@ import {
   FileText,
   TrendingUp,
   TrendingDown,
-  ChevronRight
+  ChevronRight,
+  LineChart as LineChartIcon
 } from 'lucide-react';
 import { getTransactions } from '../services/storage';
-import { MONTHS } from '../constants';
+import { MONTHS, COLORS } from '../constants';
 
 const Analysis: React.FC = () => {
   const transactions = getTransactions();
   const currentMonthStr = MONTHS[new Date().getMonth()];
+  const currentYear = new Date().getFullYear();
 
+  // Dados para o Ranking do Mês Atual
   const monthlyData = useMemo(() => {
-    // Filtra transações do mês atual e ordena do menor para o maior valor
     return transactions
-      .filter(t => t.mes === currentMonthStr)
+      .filter(t => t.mes === currentMonthStr && new Date(t.data).getFullYear() === currentYear)
       .sort((a, b) => a.valor - b.valor);
-  }, [transactions, currentMonthStr]);
+  }, [transactions, currentMonthStr, currentYear]);
+
+  // Dados para o Gráfico Comparativo Anual
+  const annualEvolutionData = useMemo(() => {
+    return MONTHS.map(month => {
+      const monthTransactions = transactions.filter(t => 
+        t.mes === month && new Date(t.data).getFullYear() === currentYear
+      );
+      
+      const entradas = monthTransactions
+        .filter(t => t.tipo === 'Entrada')
+        .reduce((sum, t) => sum + t.valor, 0);
+        
+      const saidas = monthTransactions
+        .filter(t => t.tipo === 'Saída')
+        .reduce((sum, t) => sum + t.valor, 0);
+
+      return {
+        name: month.substring(0, 3), // Abreviação Jan, Fev...
+        fullName: month,
+        Entradas: entradas,
+        Saídas: saidas
+      };
+    });
+  }, [transactions, currentYear]);
 
   const incomes = useMemo(() => monthlyData.filter(t => t.tipo === 'Entrada'), [monthlyData]);
   const expenses = useMemo(() => monthlyData.filter(t => t.tipo === 'Saída'), [monthlyData]);
@@ -37,7 +63,6 @@ const Analysis: React.FC = () => {
   }, [incomes, expenses]);
 
   const handlePrint = () => {
-    // Timeout pequeno para garantir que o estado da UI esteja estável
     setTimeout(() => {
       window.print();
     }, 100);
@@ -60,7 +85,7 @@ const Analysis: React.FC = () => {
           <div className="flex items-center gap-2 mt-1">
             <CalendarDays size={16} className="text-blue-600 dark:text-blue-400" />
             <p className="text-blue-700 dark:text-blue-400 font-bold text-sm uppercase tracking-wider">
-              Relatório de {currentMonthStr}
+              Relatório de {currentMonthStr} / {currentYear}
             </p>
           </div>
         </div>
@@ -74,29 +99,68 @@ const Analysis: React.FC = () => {
         </button>
       </div>
 
-      {/* Grid de Resumo */}
+      {/* Grid de Resumo do Mês */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="p-4 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Entradas</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Entradas ({currentMonthStr})</p>
           <p className="text-xl font-black text-blue-700 dark:text-blue-400">{formatCurrency(stats.incomeTotal)}</p>
         </div>
         <div className="p-4 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 rounded-2xl">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Saídas</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Saídas ({currentMonthStr})</p>
           <p className="text-xl font-black text-red-600 dark:text-red-400">{formatCurrency(stats.expenseTotal)}</p>
         </div>
         <div className="p-4 bg-blue-900 text-white rounded-2xl">
-          <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Saldo Líquido</p>
+          <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Saldo do Mês</p>
           <p className="text-xl font-black">{formatCurrency(stats.balance)}</p>
         </div>
       </div>
 
-      {/* Gráfico Ordenado */}
+      {/* Gráfico de Evolução Anual */}
+      <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-800 transition-colors print:shadow-none print:border-slate-200">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-lg">
+            <LineChartIcon size={20} />
+          </div>
+          <h2 className="text-lg font-black text-gray-800 dark:text-white uppercase tracking-tight">Evolução Anual (Entradas vs Saídas)</h2>
+        </div>
+        
+        <div className="h-[350px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={annualEvolutionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" opacity={0.1} />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
+                dy={10} 
+              />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
+                tickFormatter={(value) => `R$ ${value}`} 
+              />
+              <Tooltip 
+                cursor={{ fill: '#f8fafc', opacity: 0.1 }} 
+                contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: '#1e293b', color: '#f8fafc', padding: '12px' }} 
+                formatter={(value: number) => [formatCurrency(value), '']} 
+              />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} />
+              <Bar dataKey="Entradas" fill="#1E40AF" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Saídas" fill="#FBBF24" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Gráfico de Ranking do Mês */}
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-800 transition-colors print:shadow-none print:border-slate-200">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-lg">
             <ArrowDownUp size={20} />
           </div>
-          <h2 className="text-lg font-black text-gray-800 dark:text-white uppercase tracking-tight">Ranking Geral (Menor p/ Maior)</h2>
+          <h2 className="text-lg font-black text-gray-800 dark:text-white uppercase tracking-tight">Ranking Mensal (Menor p/ Maior)</h2>
         </div>
         
         <div className="h-[500px] w-full">
