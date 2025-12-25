@@ -51,6 +51,12 @@ export const registerUser = (user: User & { password?: string }): void => {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 };
 
+export const deleteUser = (id: string): void => {
+  const users = getUsers();
+  const filtered = users.filter(u => u.id !== id);
+  localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+};
+
 export const setCurrentUser = (user: User | null): void => {
   if (user) {
     localStorage.setItem(AUTH_KEY, JSON.stringify(user));

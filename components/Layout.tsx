@@ -13,7 +13,8 @@ import {
   Sun,
   Moon,
   LayoutGrid,
-  BarChartHorizontal
+  BarChartHorizontal,
+  Users as UsersIcon
 } from 'lucide-react';
 import { getCurrentUser, setCurrentUser } from '../services/storage';
 
@@ -31,6 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   });
   
   const user = getCurrentUser();
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (isDarkMode) {
@@ -49,30 +51,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/transacoes', label: 'Lançamentos', icon: <ReceiptText size={20} /> },
   ];
 
+  // Adiciona Gestão de Usuários apenas para admins
+  if (isAdmin) {
+    navItems.push({ path: '/usuarios', label: 'Usuários', icon: <UsersIcon size={20} /> });
+  }
+
   const handleLogout = () => {
     setCurrentUser(null);
     navigate('/login');
   };
-
-  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Estilos para Impressão */}
       <style>{`
         @media print {
-          /* Esconder elementos de interface */
           aside, nav, .print\\:hidden, button, header, .mobile-header { 
             display: none !important; 
           }
-          
-          /* Forçar cores e fundos */
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-
-          /* Reset de Layout para Impressão */
           html, body, #root, .min-h-screen {
             height: auto !important;
             overflow: visible !important;
@@ -81,7 +81,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             margin: 0 !important;
             padding: 0 !important;
           }
-
           main { 
             padding: 0 !important; 
             margin: 0 !important; 
@@ -91,26 +90,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             display: block !important;
             position: static !important;
           }
-
           .max-w-6xl { 
             max-width: 100% !important; 
             width: 100% !important;
           }
-
-          /* Garantir que tabelas e cards não quebrem no meio de páginas de forma estranha */
           .bg-white, .dark\\:bg-slate-900 { 
             background: white !important; 
             border: 1px solid #eee !important; 
             box-shadow: none !important;
             page-break-inside: avoid;
-          }
-          
-          .text-white, .dark\\:text-white, .dark\\:text-blue-100, .dark\\:text-slate-100 { 
-            color: black !important; 
-          }
-
-          h1, h2, h3, p {
-            color: black !important;
           }
         }
       `}</style>

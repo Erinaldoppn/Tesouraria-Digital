@@ -8,6 +8,7 @@ import Cards from './pages/Cards';
 import Analysis from './pages/Analysis';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import Users from './pages/Users';
 import { getCurrentUser } from './services/storage';
 
 // Protected Route Wrapper
@@ -51,6 +52,14 @@ const App: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <Transactions />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/usuarios" element={
+          <ProtectedRoute>
+            <Layout>
+              <Users />
             </Layout>
           </ProtectedRoute>
         } />
