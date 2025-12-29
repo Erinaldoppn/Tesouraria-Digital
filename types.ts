@@ -1,5 +1,5 @@
 
-export type TransactionType = 'Entrada' | 'Saída';
+export type TransactionType = 'Entrada' | 'Saída' | 'Entrada (Projeto)' | 'Saída (Projeto)';
 export type PaymentMethod = 'Pix' | 'Espécie';
 
 export interface Transaction {
@@ -11,6 +11,7 @@ export interface Transaction {
   data: string;
   mes: string;
   responsavel: string;
+  projeto?: string; // Nome da campanha ou departamento
   comprovante?: string; // Base64 or URL
   observacoes?: string;
 }
@@ -26,5 +27,8 @@ export interface FinancialStats {
   totalIncome: number;
   totalExpense: number;
   balance: number;
-  monthlyData: { month: string; income: number; expense: number }[];
+  projectIncome: number;
+  projectExpense: number;
+  projectBalance: number;
+  monthlyData: { month: string; income: number; expense: number; projectIncome: number; projectExpense: number }[];
 }
