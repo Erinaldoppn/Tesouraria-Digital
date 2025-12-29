@@ -161,7 +161,7 @@ const Transactions: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Deseja realmente excluir este lançamento?')) {
+    if (confirm('Deseja realmente excluir este lançamento permanentemente?')) {
       deleteTransaction(id);
       loadData();
     }
@@ -180,7 +180,7 @@ const Transactions: React.FC = () => {
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <button 
             onClick={handlePrint}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-xs uppercase hover:bg-slate-50 transition-all shadow-sm"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-xs uppercase hover:bg-slate-50 transition-all shadow-sm active:scale-95"
           >
             <Printer size={16} /> Relatório PDF
           </button>
@@ -189,7 +189,7 @@ const Transactions: React.FC = () => {
             <>
               <button 
                 onClick={() => csvInputRef.current?.click()}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-blue-100 dark:border-slate-800 text-blue-800 dark:text-blue-400 px-4 py-2.5 rounded-xl font-bold text-xs uppercase hover:bg-blue-50 transition-all shadow-sm"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-blue-100 dark:border-slate-800 text-blue-800 dark:text-blue-400 px-4 py-2.5 rounded-xl font-bold text-xs uppercase hover:bg-blue-50 transition-all shadow-sm active:scale-95"
               >
                 <FileUp size={16} /> Importar CSV
               </button>
@@ -203,7 +203,7 @@ const Transactions: React.FC = () => {
         </div>
       </div>
 
-      {/* Cabeçalho de Impressão (Aparece apenas no PDF) */}
+      {/* Cabeçalho de Impressão */}
       <div className="hidden print:block text-center border-b-2 border-blue-900 pb-6 mb-8">
         <h2 className="text-2xl font-black uppercase text-blue-900">Igreja 3IPI Natal</h2>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Relatório Analítico de Movimentação Financeira</p>
@@ -250,7 +250,7 @@ const Transactions: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
               {paginatedTransactions.map((t) => (
-                <tr key={t.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-colors group">
+                <tr key={t.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-all duration-300 group">
                   <td className="px-6 py-4">
                     <p className="text-[10px] text-gray-400 font-black mb-0.5">{new Date(t.data).toLocaleDateString('pt-BR')}</p>
                     <p className="font-bold text-gray-900 dark:text-white text-sm">{t.movimento}</p>
@@ -271,32 +271,44 @@ const Transactions: React.FC = () => {
                     {t.comprovante ? (
                       <button 
                         onClick={() => setViewingComprovante(t.comprovante || null)}
-                        className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:scale-110 transition-transform"
+                        className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:scale-110 transition-transform shadow-sm"
                         title="Ver Documento"
                       >
-                        <Paperclip size={16} />
+                        <Paperclip size={16} strokeWidth={2.5} />
                       </button>
                     ) : (
-                      <span className="text-gray-300 dark:text-slate-700">—</span>
+                      <span className="text-gray-300 dark:text-slate-700 font-bold">—</span>
                     )}
                   </td>
                   <td className={`px-6 py-4 text-right font-black text-sm ${t.tipo.includes('Entrada') ? 'text-blue-700 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                     {t.tipo.includes('Entrada') ? '+' : '-'} {formatCurrency(t.valor)}
                   </td>
                   <td className="px-6 py-4 text-center print:hidden">
-                    <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-center items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-90 group-hover:scale-100">
                       {isAdmin ? (
                         <>
-                          <button onClick={() => handleOpenModal(t)} className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
-                            <Edit3 size={16} />
+                          <button 
+                            onClick={() => handleOpenModal(t)} 
+                            className="p-2.5 text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-110 active:scale-95 transition-all"
+                            title="Editar Lançamento"
+                          >
+                            <Edit3 size={18} strokeWidth={2.5} />
                           </button>
-                          <button onClick={() => handleDelete(t.id)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                            <Trash2 size={16} />
+                          <button 
+                            onClick={() => handleDelete(t.id)} 
+                            className="p-2.5 text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 hover:bg-red-600 hover:text-white dark:hover:bg-red-500 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-110 active:scale-95 transition-all"
+                            title="Excluir Lançamento"
+                          >
+                            <Trash2 size={18} strokeWidth={2.5} />
                           </button>
                         </>
                       ) : (
-                        <button onClick={() => handleOpenModal(t)} className="p-2 text-gray-400 hover:text-blue-600 rounded-lg transition-colors">
-                          <Eye size={16} />
+                        <button 
+                          onClick={() => handleOpenModal(t)} 
+                          className="p-2.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 hover:bg-blue-600 hover:text-white rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-110 active:scale-95 transition-all"
+                          title="Visualizar Detalhes"
+                        >
+                          <Eye size={18} strokeWidth={2.5} />
                         </button>
                       )}
                     </div>
@@ -305,7 +317,7 @@ const Transactions: React.FC = () => {
               ))}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Nenhum lançamento encontrado.</td>
+                  <td colSpan={5} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">Nenhum lançamento encontrado para a busca.</td>
                 </tr>
               )}
             </tbody>
@@ -320,16 +332,16 @@ const Transactions: React.FC = () => {
           <button 
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(prev => prev - 1)}
-            className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all active:scale-95"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} strokeWidth={3} />
           </button>
           <button 
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(prev => prev + 1)}
-            className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all active:scale-95"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={16} strokeWidth={3} />
           </button>
         </div>
       </div>
@@ -337,10 +349,10 @@ const Transactions: React.FC = () => {
       {/* Modal Lançamento */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[300] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in duration-300">
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-blue-900 text-white">
               <h2 className="text-xl font-black uppercase tracking-tight">{editingTransaction ? 'Editar' : 'Novo'} Lançamento</h2>
-              <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="hover:rotate-90 transition-transform"><X size={24} /></button>
             </div>
             
             <div className="flex bg-gray-50 dark:bg-slate-950 px-6">
@@ -439,10 +451,10 @@ const Transactions: React.FC = () => {
                 )}
 
                 <div className="flex gap-4 pt-4 sticky bottom-0 bg-white dark:bg-slate-900 py-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-3 bg-gray-100 dark:bg-slate-800 dark:text-slate-400 rounded-xl font-bold uppercase text-[10px] tracking-widest">Fechar</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-3 bg-gray-100 dark:bg-slate-800 dark:text-slate-400 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:bg-gray-200 transition-colors">Fechar</button>
                   {isAdmin && (
-                    <button type="submit" className="flex-1 p-3 bg-blue-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest border-b-4 border-blue-950 shadow-xl active:scale-95">
-                      {showSuccess ? 'Gravado!' : 'Salvar Lançamento'}
+                    <button type="submit" className="flex-1 p-3 bg-blue-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest border-b-4 border-blue-950 shadow-xl active:scale-95 transition-all">
+                      {showSuccess ? 'Gravado com Sucesso!' : 'Salvar Lançamento'}
                     </button>
                   )}
                 </div>
@@ -454,9 +466,9 @@ const Transactions: React.FC = () => {
 
       {/* Visualização de Comprovante em Tela Cheia */}
       {viewingComprovante && (
-        <div className="fixed inset-0 z-[400] bg-slate-950/95 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-          <button onClick={() => setViewingComprovante(null)} className="absolute top-6 right-6 text-white p-3 hover:bg-white/10 rounded-full transition-all"><X size={32} /></button>
-          <img src={viewingComprovante} className="max-w-full max-h-[80vh] object-contain shadow-2xl rounded-lg" alt="Documento" />
+        <div className="fixed inset-0 z-[400] bg-slate-950/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+          <button onClick={() => setViewingComprovante(null)} className="absolute top-6 right-6 text-white p-3 hover:bg-white/10 rounded-full transition-all hover:rotate-90 duration-300"><X size={32} /></button>
+          <img src={viewingComprovante} className="max-w-full max-h-[80vh] object-contain shadow-2xl rounded-lg animate-in zoom-in duration-300" alt="Documento" />
           <div className="mt-8 flex gap-4">
              <button 
                onClick={() => {
@@ -465,7 +477,7 @@ const Transactions: React.FC = () => {
                   link.download = `3IPI-DOC-${Date.now()}.png`;
                   link.click();
                }}
-               className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-xs flex items-center gap-3 shadow-xl"
+               className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-xs flex items-center gap-3 shadow-xl hover:bg-blue-500 transition-all active:scale-95"
              >
                <Download size={20} /> Baixar Original
              </button>
@@ -473,7 +485,7 @@ const Transactions: React.FC = () => {
         </div>
       )}
 
-      {/* Rodapé de Impressão para o PDF (Apenas para o Relatório) */}
+      {/* Rodapé de Impressão */}
       <div className="hidden print:block mt-20 pt-10 border-t border-gray-200">
          <div className="grid grid-cols-2 gap-20">
             <div className="text-center">
