@@ -7,7 +7,7 @@ import {
 import { 
   TrendingUp, TrendingDown, Wallet, Sparkles, RefreshCcw, 
   Church, Lock, PieChart as PieChartIcon,
-  BarChart3, ReceiptText, Target
+  BarChart3, ReceiptText, Target, AlertCircle
 } from 'lucide-react';
 import { getTransactions, getCurrentUser } from '../services/storage';
 import { getFinancialInsight } from '../services/geminiService';
@@ -27,11 +27,11 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const stats = useMemo<FinancialStats>(() => {
-    // Operacional
+    // Operacional (Dízimos e Ofertas Gerais)
     const income = transactions.filter(t => t.tipo === 'Entrada').reduce((sum, t) => sum + t.valor, 0);
     const expense = transactions.filter(t => t.tipo === 'Saída').reduce((sum, t) => sum + t.valor, 0);
     
-    // Projetos
+    // Projetos (Entradas e Saídas Especiais - Fundo Restrito)
     const pIncome = transactions.filter(t => t.tipo === 'Entrada (Projeto)').reduce((sum, t) => sum + t.valor, 0);
     const pExpense = transactions.filter(t => t.tipo === 'Saída (Projeto)').reduce((sum, t) => sum + t.valor, 0);
 
@@ -49,22 +49,18 @@ const Dashboard: React.FC = () => {
     return { 
       totalIncome: income, 
       totalExpense: expense, 
-      balance: income - expense, 
+      balance: income - expense, // Apenas operacional
       projectIncome: pIncome,
       projectExpense: pExpense,
-      projectBalance: pIncome - pExpense,
+      projectBalance: pIncome - pExpense, // Saldo isolado do projeto
       monthlyData 
     };
   }, [transactions]);
 
-  const topTransactions = useMemo(() => {
-    return [...transactions].sort((a, b) => b.valor - a.valor).slice(0, 5);
-  }, [transactions]);
-
   const pieData = useMemo(() => [
     { name: 'Dízimos/Ofertas', value: stats.totalIncome, color: COLORS.primaryBlue },
-    { name: 'Projetos/Eventos', value: stats.projectIncome, color: '#6366f1' }, // Indigo
-    { name: 'Saídas Gerais', value: stats.totalExpense, color: COLORS.secondaryYellow }
+    { name: 'Projetos (Restrito)', value: stats.projectIncome, color: '#6366f1' },
+    { name: 'Saídas Operacionais', value: stats.totalExpense, color: COLORS.secondaryYellow }
   ], [stats]);
 
   const handleGenerateInsight = async () => {
@@ -81,32 +77,63 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6 pb-10">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Tesouraria 3IPI Natal</h1>
-          <p className="text-blue-700 dark:text-blue-400 font-semibold text-sm uppercase tracking-wider">Gestão Segregada de Fundos</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Dashboard Financeiro</h1>
+          <p className="text-blue-700 dark:text-blue-400 font-bold text-[10px] uppercase tracking-[0.2em]">Gestão de Ativos 3IPI Natal</p>
         </div>
         <button onClick={() => setTransactions(getTransactions())} className="p-3 bg-white dark:bg-slate-900 rounded-2xl border-2 border-gray-100 dark:border-slate-800 text-blue-800 dark:text-blue-400 shadow-sm transition-all active:scale-95">
           <RefreshCcw size={20} strokeWidth={2.5} />
         </button>
       </div>
 
-      {/* Cartões Principais */}
+      {/* Cartões Principais com Lógica de Segregação */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] shadow-sm border-b-4 border-blue-800">
-           <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Saldo Operacional</p>
-           <h3 className="text-xl font-black text-blue-900 dark:text-blue-100">{formatCurrency(stats.balance)}</h3>
-           <p className="text-[8px] text-blue-500 font-bold mt-1 uppercase">Dízimos e Ofertas Gerais</p>
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] shadow-sm border-b-4 border-indigo-600">
-           <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Fundo de Projetos</p>
-           <h3 className="text-xl font-black text-indigo-900 dark:text-indigo-300">{formatCurrency(stats.projectBalance)}</h3>
-           <p className="text-[8px] text-indigo-500 font-bold mt-1 uppercase">Eventos, Campanhas e Departamentos</p>
-        </div>
-        <div className="bg-blue-900 dark:bg-slate-800 p-5 rounded-[24px] shadow-xl text-white md:col-span-2 flex justify-between items-center overflow-hidden">
-           <div>
-             <p className="text-[9px] text-blue-300 font-black uppercase tracking-widest">Saldo Total em Caixa</p>
-             <h3 className="text-2xl font-black">{formatCurrency(stats.balance + stats.projectBalance)}</h3>
+        {/* Card Operacional */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[32px] shadow-sm border-b-4 border-blue-800 transition-all hover:translate-y-[-4px]">
+           <div className="flex justify-between items-center mb-2">
+             <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Disponível Geral</p>
+             <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-lg">
+               <TrendingUp size={14} />
+             </div>
            </div>
-           <Wallet size={40} className="opacity-20 -mr-2" />
+           <h3 className="text-xl font-black text-blue-900 dark:text-blue-100">{formatCurrency(stats.balance)}</h3>
+           <p className="text-[8px] text-blue-500 font-bold mt-1 uppercase">Dízimos e Ofertas Livres</p>
+        </div>
+
+        {/* Card Projetos - Fundo Isolado */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[32px] shadow-sm border-b-4 border-indigo-600 transition-all hover:translate-y-[-4px]">
+           <div className="flex justify-between items-center mb-2">
+             <p className="text-[9px] text-indigo-400 font-black uppercase tracking-widest">Fundo de Projetos</p>
+             <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg">
+               <Target size={14} />
+             </div>
+           </div>
+           <h3 className="text-xl font-black text-indigo-900 dark:text-indigo-300">{formatCurrency(stats.projectBalance)}</h3>
+           <div className="flex items-center gap-1 mt-1">
+             <Lock size={8} className="text-indigo-500" />
+             <p className="text-[8px] text-indigo-500 font-bold uppercase tracking-tighter">Recurso com Destinação Específica</p>
+           </div>
+        </div>
+
+        {/* Card Consolidado (Geral) - Reflete apenas o operacional conforme solicitado */}
+        <div className="bg-blue-900 dark:bg-slate-800 p-6 rounded-[32px] shadow-xl text-white md:col-span-2 flex justify-between items-center overflow-hidden relative group">
+           <div className="absolute -right-6 -bottom-6 text-white/10 group-hover:scale-110 transition-transform duration-700">
+             <Wallet size={120} />
+           </div>
+           <div className="relative z-10">
+             <div className="flex items-center gap-2 mb-1">
+               <p className="text-[9px] text-blue-300 font-black uppercase tracking-widest">Saldo Real Disponível (Caixa Geral)</p>
+               <div title="Este valor não inclui o fundo de projetos" className="cursor-help">
+                 <AlertCircle size={12} className="text-yellow-400" />
+               </div>
+             </div>
+             <h3 className="text-3xl font-black">{formatCurrency(stats.balance)}</h3>
+             <p className="text-[9px] text-blue-200/60 font-medium mt-1">Exclui valores retidos em fundos de projetos</p>
+           </div>
+           <div className="text-right hidden sm:block relative z-10">
+             <div className="inline-flex px-3 py-1 bg-yellow-400 rounded-full text-blue-950 text-[10px] font-black uppercase tracking-widest">
+                Tesouraria 3IPI
+             </div>
+           </div>
         </div>
       </div>
 
@@ -118,41 +145,54 @@ const Dashboard: React.FC = () => {
           <h2 className="text-lg font-black uppercase">Análise de IA</h2>
         </div>
         <div className="bg-white/5 p-6 rounded-2xl border border-white/10 mb-6">
-          {loadingInsight ? <div className="flex items-center gap-3 animate-pulse text-blue-200 uppercase font-black text-xs"><RefreshCcw className="animate-spin" /> Processando dados...</div> : 
-            <p className="text-blue-50 text-sm leading-relaxed">{aiInsight || "Gere uma análise para entender como as campanhas estão afetando o caixa."}</p>}
+          {loadingInsight ? (
+            <div className="flex items-center gap-3 animate-pulse text-blue-200 uppercase font-black text-xs">
+              <RefreshCcw className="animate-spin" /> Analisando separação de fundos...
+            </div>
+          ) : (
+            <p className="text-blue-50 text-sm leading-relaxed">
+              {aiInsight || "A IA pode analisar como a segregação de fundos entre operacional e projetos está impactando o fluxo de caixa da igreja."}
+            </p>
+          )}
         </div>
         {isAdmin && !aiInsight && !loadingInsight && (
-          <button onClick={handleGenerateInsight} className="bg-yellow-400 text-blue-900 font-black px-6 py-4 rounded-xl hover:bg-yellow-300 uppercase text-xs tracking-widest shadow-xl shadow-yellow-400/20 active:scale-95">Gerar Relatório Inteligente</button>
+          <button onClick={handleGenerateInsight} className="bg-yellow-400 text-blue-900 font-black px-6 py-4 rounded-xl hover:bg-yellow-300 uppercase text-xs tracking-widest shadow-xl shadow-yellow-400/20 active:scale-95 transition-all">
+            Gerar Relatório Inteligente
+          </button>
         )}
       </div>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-800 h-[400px]">
-          <h2 className="text-sm font-black uppercase text-gray-400 mb-6 tracking-widest flex items-center gap-2"><BarChart3 size={16} /> Fluxo por Competência</h2>
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-slate-800 h-[400px]">
+          <h2 className="text-[10px] font-black uppercase text-gray-400 mb-6 tracking-widest flex items-center gap-2">
+            <BarChart3 size={16} className="text-blue-600" /> Fluxo por Competência
+          </h2>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={stats.monthlyData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fontWeight: 700 }} />
-              <YAxis tick={{ fontSize: 10, fontWeight: 700 }} />
-              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '12px' }} />
-              <Legend wrapperStyle={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase' }} />
-              <Bar name="Entradas Gerais" dataKey="income" fill={COLORS.primaryBlue} radius={[4, 4, 0, 0]} />
+              <XAxis dataKey="month" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+              <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', paddingBottom: '20px' }} />
+              <Bar name="Dízimos/Ofertas" dataKey="income" fill={COLORS.primaryBlue} radius={[4, 4, 0, 0]} />
               <Bar name="Entradas Projetos" dataKey="projectIncome" fill="#6366f1" radius={[4, 4, 0, 0]} />
               <Bar name="Saídas (Total)" dataKey="expense" fill={COLORS.secondaryYellow} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-800 h-[400px]">
-           <h2 className="text-sm font-black uppercase text-gray-400 mb-6 tracking-widest flex items-center gap-2"><PieChartIcon size={16} /> Composição do Caixa</h2>
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] shadow-sm border border-gray-100 dark:border-slate-800 h-[400px]">
+           <h2 className="text-[10px] font-black uppercase text-gray-400 mb-6 tracking-widest flex items-center gap-2">
+             <PieChartIcon size={16} className="text-indigo-600" /> Composição do Patrimônio
+           </h2>
            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
-                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                <Pie data={pieData} cx="50%" cy="40%" innerRadius={60} outerRadius={100} paddingAngle={8} dataKey="value">
+                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
                 </Pie>
                 <Tooltip />
-                <Legend iconType="circle" />
+                <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase' }} />
               </PieChart>
            </ResponsiveContainer>
         </div>
