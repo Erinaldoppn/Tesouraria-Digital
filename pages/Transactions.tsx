@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Plus, Search, Trash2, Edit3, X, Image as ImageIcon,
   CheckCircle2, Printer, Eye, Paperclip, FileUp, Target, Download, 
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User as UserIcon, Calendar
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User as UserIcon, Calendar,
+  RotateCw, ZoomIn, ZoomOut, Maximize2, FileText as FilePdfIcon
 } from 'lucide-react';
 import { 
   getTransactions, 
@@ -20,7 +21,6 @@ const Transactions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const csvInputRef = useRef<HTMLInputElement>(null);
   
   const user = getCurrentUser();
   const isAdmin = user?.role === 'admin';
@@ -34,6 +34,10 @@ const Transactions: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'dados' | 'comprovante'>('dados');
+
+  // Viewer state
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
 
   const [formData, setFormData] = useState<Partial<Transaction>>({
     movimento: '',
@@ -71,7 +75,6 @@ const Transactions: React.FC = () => {
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage) || 1;
   const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Reset page when filtering or searching
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterType]);
@@ -116,7 +119,6 @@ const Transactions: React.FC = () => {
     e.preventDefault();
     if (!isAdmin) return;
     
-    // Extrair o mês da data selecionada automaticamente caso mude
     const selectedDate = new Date(formData.data + 'T12:00:00');
     const updatedMes = MONTHS[selectedDate.getMonth()];
 
@@ -139,6 +141,14 @@ const Transactions: React.FC = () => {
   };
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const isPdf = (data: string | undefined) => data?.startsWith('data:application/pdf');
+
+  const handleCloseViewer = () => {
+    setViewingComprovante(null);
+    setZoom(1);
+    setRotation(0);
+  };
 
   return (
     <div className="space-y-6 pb-20">
@@ -230,8 +240,8 @@ const Transactions: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       {t.comprovante ? (
-                        <button onClick={() => setViewingComprovante(t.comprovante || null)} className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:scale-110 transition-transform shadow-sm">
-                          <Paperclip size={16} strokeWidth={2.5} />
+                        <button onClick={() => setViewingComprovante(t.comprovante || null)} className={`p-1.5 rounded-lg hover:scale-110 transition-transform shadow-sm ${isPdf(t.comprovante) ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
+                          {isPdf(t.comprovante) ? <FilePdfIcon size={16} strokeWidth={2.5} /> : <Paperclip size={16} strokeWidth={2.5} />}
                         </button>
                       ) : <span className="text-gray-300">—</span>}
                     </td>
@@ -264,23 +274,8 @@ const Transactions: React.FC = () => {
           <p className="text-[9px] font-bold text-blue-600 uppercase">Total de {filteredTransactions.length} registros</p>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            disabled={currentPage === 1} 
-            onClick={() => setCurrentPage(1)} 
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-            title="Primeira Página"
-          >
-            <ChevronsLeft size={16} />
-          </button>
-          <button 
-            disabled={currentPage === 1} 
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} 
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-            title="Página Anterior"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(1)} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"><ChevronsLeft size={16} /></button>
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"><ChevronLeft size={16} /></button>
           <div className="flex gap-1">
              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                let pageNum;
@@ -288,35 +283,13 @@ const Transactions: React.FC = () => {
                else if (currentPage <= 3) pageNum = i + 1;
                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
                else pageNum = currentPage - 2 + i;
-
                return (
-                 <button 
-                   key={pageNum}
-                   onClick={() => setCurrentPage(pageNum)}
-                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-blue-900 text-white shadow-md' : 'bg-white dark:bg-slate-900 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-100 dark:border-slate-800'}`}
-                 >
-                   {pageNum}
-                 </button>
+                 <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-blue-900 text-white shadow-md' : 'bg-white dark:bg-slate-900 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-100 dark:border-slate-800'}`}>{pageNum}</button>
                );
              })}
           </div>
-
-          <button 
-            disabled={currentPage === totalPages} 
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} 
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-            title="Próxima Página"
-          >
-            <ChevronRight size={16} />
-          </button>
-          <button 
-            disabled={currentPage === totalPages} 
-            onClick={() => setCurrentPage(totalPages)} 
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
-            title="Última Página"
-          >
-            <ChevronsRight size={16} />
-          </button>
+          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"><ChevronRight size={16} /></button>
+          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"><ChevronsRight size={16} /></button>
         </div>
       </div>
 
@@ -341,7 +314,6 @@ const Transactions: React.FC = () => {
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descrição do Movimento</label>
                       <input disabled={!isAdmin} type="text" placeholder="Ex: Oferta Culto de Domingo" className="w-full p-3 bg-gray-50 dark:bg-slate-950 dark:border-slate-800 border-2 border-gray-100 rounded-xl font-bold text-sm" value={formData.movimento} onChange={(e) => setFormData({...formData, movimento: e.target.value})} required />
                     </div>
-
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-blue-800 dark:text-blue-400 uppercase tracking-widest">Nome do Contribuinte / Favorecido</label>
                       <div className="relative">
@@ -349,15 +321,13 @@ const Transactions: React.FC = () => {
                         <input disabled={!isAdmin} type="text" placeholder="Nome do Membro ou Visitante" className="w-full pl-10 pr-3 py-3 bg-blue-50/30 dark:bg-slate-950 dark:border-slate-800 border-2 border-blue-50 dark:border-slate-800 rounded-xl font-bold text-sm" value={formData.contribuinte} onChange={(e) => setFormData({...formData, contribuinte: e.target.value})} />
                       </div>
                     </div>
-
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Data do Lançamento (DD/MM/AAAA)</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Data do Lançamento</label>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
                         <input disabled={!isAdmin} type="date" className="w-full pl-10 pr-3 py-3 bg-gray-50 dark:bg-slate-950 dark:border-slate-800 border-2 border-gray-100 rounded-xl font-bold text-sm" value={formData.data} onChange={(e) => setFormData({...formData, data: e.target.value})} required />
                       </div>
                     </div>
-                    
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tipo de Fluxo</label>
                       <select disabled={!isAdmin} className="w-full p-3 bg-gray-50 dark:bg-slate-950 dark:border-slate-800 border-2 border-gray-100 rounded-xl font-bold text-xs" value={formData.tipo} onChange={(e) => setFormData({...formData, tipo: e.target.value as TransactionType})}>
@@ -367,12 +337,10 @@ const Transactions: React.FC = () => {
                         <option value="Saída (Projeto)">Despesa Projeto / Evento</option>
                       </select>
                     </div>
-
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Valor (R$)</label>
                       <input disabled={!isAdmin} type="number" step="0.01" className="w-full p-3 bg-gray-50 dark:bg-slate-950 dark:border-slate-800 border-2 border-gray-100 rounded-xl font-black text-lg" value={formData.valor} onChange={(e) => setFormData({...formData, valor: Number(e.target.value)})} required />
                     </div>
-
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Forma de Pagamento</label>
                       <select disabled={!isAdmin} className="w-full p-3 bg-gray-50 dark:bg-slate-950 dark:border-slate-800 border-2 border-gray-100 rounded-xl font-bold text-xs" value={formData.metodo} onChange={(e) => setFormData({...formData, metodo: e.target.value as PaymentMethod})}>
@@ -380,7 +348,6 @@ const Transactions: React.FC = () => {
                         <option value="Espécie">Dinheiro (Espécie)</option>
                       </select>
                     </div>
-
                     {formData.tipo?.includes('Projeto') && (
                       <div className="col-span-full space-y-1">
                         <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Identificação do Projeto</label>
@@ -392,10 +359,17 @@ const Transactions: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="border-4 border-dashed border-gray-100 dark:border-slate-800 rounded-3xl p-10 flex flex-col items-center justify-center text-center gap-4 bg-gray-50 dark:bg-slate-950">
+                  <div className="border-4 border-dashed border-gray-100 dark:border-slate-800 rounded-3xl p-10 flex flex-col items-center justify-center text-center gap-4 bg-gray-50 dark:bg-slate-950 min-h-[300px]">
                     {formData.comprovante ? (
-                      <div className="relative group">
-                        <img src={formData.comprovante} className="max-h-64 mx-auto rounded-xl shadow-lg border-4 border-white dark:border-slate-800" />
+                      <div className="relative group w-full max-w-md mx-auto">
+                        {isPdf(formData.comprovante) ? (
+                          <div className="flex flex-col items-center gap-4 bg-red-50 dark:bg-red-900/10 p-8 rounded-2xl border-2 border-red-100 dark:border-red-900/20">
+                            <FilePdfIcon size={64} className="text-red-600" />
+                            <p className="font-black text-red-700 dark:text-red-400 uppercase text-xs">Arquivo PDF anexado</p>
+                          </div>
+                        ) : (
+                          <img src={formData.comprovante} className="max-h-64 mx-auto rounded-xl shadow-lg border-4 border-white dark:border-slate-800" />
+                        )}
                         {isAdmin && (
                           <button type="button" onClick={() => setFormData({...formData, comprovante: ''})} className="absolute -top-2 -right-2 bg-red-600 text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform">
                             <X size={16} />
@@ -405,14 +379,13 @@ const Transactions: React.FC = () => {
                     ) : (
                       <>
                         <ImageIcon size={48} className="text-gray-300 dark:text-slate-800" />
-                        <p className="font-black text-gray-400 uppercase tracking-tight text-xs">Selecione uma imagem do recibo ou comprovante</p>
+                        <p className="font-black text-gray-400 uppercase tracking-tight text-xs">Selecione uma imagem ou PDF do comprovante</p>
                         {isAdmin && <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-yellow-400 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase shadow-md active:scale-95 transition-all">Selecionar Arquivo</button>}
                       </>
                     )}
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*,application/pdf" onChange={handleFileChange} />
                   </div>
                 )}
-
                 <div className="flex gap-4 pt-6">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 p-4 bg-gray-100 dark:bg-slate-800 dark:text-slate-400 rounded-xl font-black uppercase text-[10px] tracking-widest">Cancelar</button>
                   {isAdmin && (
@@ -432,9 +405,73 @@ const Transactions: React.FC = () => {
       )}
 
       {viewingComprovante && (
-        <div className="fixed inset-0 z-[400] bg-slate-950/95 flex items-center justify-center p-4" onClick={() => setViewingComprovante(null)}>
-          <button onClick={() => setViewingComprovante(null)} className="absolute top-6 right-6 text-white hover:scale-110 transition-transform"><X size={32} /></button>
-          <img src={viewingComprovante} className="max-w-full max-h-[85vh] object-contain shadow-2xl rounded-lg border-8 border-white/10" onClick={(e) => e.stopPropagation()} />
+        <div className="fixed inset-0 z-[400] bg-slate-950/98 flex flex-col items-center justify-center p-4">
+          {/* Header do Viewer */}
+          <div className="fixed top-0 left-0 right-0 p-4 md:p-6 flex justify-between items-center z-[410] bg-gradient-to-b from-black/50 to-transparent">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={handleCloseViewer}
+                className="p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <h3 className="text-white font-black uppercase text-xs tracking-widest hidden md:block">Visualizador de Comprovante</h3>
+            </div>
+            
+            <div className="flex items-center gap-2 bg-slate-900/80 p-1 rounded-2xl border border-white/10 backdrop-blur-md">
+              <button 
+                onClick={() => setZoom(prev => Math.max(0.5, prev - 0.25))}
+                className="p-2 text-white hover:bg-white/10 rounded-xl" title="Diminuir Zoom"
+              >
+                <ZoomOut size={20} />
+              </button>
+              <span className="text-white text-[10px] font-black w-12 text-center">{Math.round(zoom * 100)}%</span>
+              <button 
+                onClick={() => setZoom(prev => Math.min(3, prev + 0.25))}
+                className="p-2 text-white hover:bg-white/10 rounded-xl" title="Aumentar Zoom"
+              >
+                <ZoomIn size={20} />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              <button 
+                onClick={() => setRotation(prev => (prev + 90) % 360)}
+                className="p-2 text-white hover:bg-white/10 rounded-xl" title="Rotacionar"
+              >
+                <RotateCw size={20} />
+              </button>
+              <button 
+                onClick={() => { setZoom(1); setRotation(0); }}
+                className="p-2 text-white hover:bg-white/10 rounded-xl" title="Resetar Visualização"
+              >
+                <Maximize2 size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Área de Visualização */}
+          <div className="w-full h-full flex items-center justify-center overflow-auto p-12">
+            <div 
+              className="transition-all duration-300 ease-out shadow-2xl relative"
+              style={{ 
+                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                transformOrigin: 'center center'
+              }}
+            >
+              {isPdf(viewingComprovante) ? (
+                <iframe 
+                  src={viewingComprovante} 
+                  className="w-[90vw] md:w-[70vw] h-[80vh] rounded-lg bg-white"
+                  title="Visualizador de PDF"
+                />
+              ) : (
+                <img 
+                  src={viewingComprovante} 
+                  className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg border-4 border-white/10" 
+                  alt="Comprovante"
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
