@@ -13,13 +13,12 @@ const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulação de delay para feedback visual
-    setTimeout(() => {
-      const users = getUsers();
+    try {
+      const users = await getUsers();
       const user = users.find(u => u.email === email && u.password === password);
 
       if (user) {
@@ -28,9 +27,12 @@ const Login: React.FC = () => {
         navigate('/');
       } else {
         setError('E-mail ou senha incorretos.');
-        setIsSubmitting(false);
       }
-    }, 600);
+    } catch (err) {
+      setError('Erro ao conectar com o banco de dados.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClass = "w-full pl-10 pr-12 py-3 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none transition-all font-medium bg-gray-50 text-gray-900";
@@ -39,7 +41,6 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-blue-900 flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden border-4 border-white/10">
         <div className="bg-blue-800 p-8 text-center relative overflow-hidden">
-          {/* Elemento Decorativo */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
           
           <div className="inline-flex p-5 bg-yellow-400 rounded-[24px] mb-4 shadow-xl ring-8 ring-blue-700/50">
@@ -131,7 +132,6 @@ const Login: React.FC = () => {
         </form>
       </div>
 
-      {/* Modal de Recuperação */}
       {showForgotModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-blue-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative border-4 border-yellow-400 animate-in zoom-in duration-300">
@@ -163,13 +163,6 @@ const Login: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Rodapé institucional */}
-      <div className="fixed bottom-6 text-center w-full hidden md:block">
-        <p className="text-blue-300/50 text-[10px] font-bold uppercase tracking-widest">
-          Ambiente Seguro de Tesouraria • Igreja 3IPI Natal
-        </p>
-      </div>
     </div>
   );
 };

@@ -15,7 +15,7 @@ const SignUp: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const newErrors: Record<string, string> = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,7 +26,7 @@ const SignUp: React.FC = () => {
     if (!emailRegex.test(email)) {
       newErrors.email = 'Insira um formato de e-mail válido.';
     } else {
-      const users = getUsers();
+      const users = await getUsers();
       if (users.find(u => u.email === email)) {
         newErrors.email = 'Este e-mail já está cadastrado no sistema.';
       }
@@ -44,26 +44,30 @@ const SignUp: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    const isValid = await validateForm();
+    if (!isValid) return;
 
     setIsSubmitting(true);
     
-    setTimeout(() => {
+    try {
       const newUser = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         name,
         email,
         password,
         role
       };
       
-      registerUser(newUser);
-      setIsSubmitting(false);
+      await registerUser(newUser);
       alert('Conta de Tesouraria criada com sucesso!');
       navigate('/login');
-    }, 800);
+    } catch (err) {
+      alert('Erro ao criar conta no banco de dados.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getInputClass = (fieldName: string) => {
