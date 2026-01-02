@@ -4,58 +4,72 @@ import { supabase } from '../lib/supabase';
 
 const AUTH_KEY = '3ipi_current_user';
 
+// --- AJUDANTE DE ERROS ---
+const handleSupabaseError = (error: any, context: string) => {
+  console.error(`[Supabase Error] Contexto: ${context}`, error);
+  if (error.code === '42501') {
+    console.error("ERRO DE RLS: Você precisa configurar as políticas (Policies) no painel do Supabase para permitir acesso a esta tabela.");
+  }
+  return error;
+};
+
 // --- TRANSAÇÕES (SUPABASE) ---
 
 export const getTransactions = async (): Promise<Transaction[]> => {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .order('data', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('data', { ascending: false });
 
-  if (error) {
-    console.error("Erro ao buscar transações no Supabase:", error);
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    handleSupabaseError(error, "getTransactions");
     return [];
   }
-  return data || [];
 };
 
 export const saveTransaction = async (transaction: Transaction): Promise<void> => {
-  // Se não houver ID, o Supabase pode gerar um (UUID), mas mantemos a lógica de compatibilidade
-  const payload = { ...transaction };
-  if (!payload.id) {
-    delete payload.id; // Deixa o banco gerar se for novo
-  }
+  try {
+    const payload = { ...transaction };
+    if (!payload.id || payload.id === '') {
+      // @ts-ignore
+      delete payload.id; 
+    }
 
-  const { error } = await supabase
-    .from('transactions')
-    .upsert(payload);
+    const { error } = await supabase
+      .from('transactions')
+      .upsert(payload);
 
-  if (error) {
-    console.error("Erro ao salvar transação no Supabase:", error);
-    throw error;
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, "saveTransaction");
   }
 };
 
 export const deleteTransaction = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('transactions')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error("Erro ao excluir transação no Supabase:", error);
-    throw error;
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, "deleteTransaction");
   }
 };
 
 export const importTransactions = async (newTransactions: Transaction[]): Promise<void> => {
-  const { error } = await supabase
-    .from('transactions')
-    .insert(newTransactions);
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .insert(newTransactions);
 
-  if (error) {
-    console.error("Erro na importação em massa:", error);
-    throw error;
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, "importTransactions");
   }
 };
 
@@ -75,36 +89,40 @@ export const getCurrentUser = (): User | null => {
 };
 
 export const getUsers = async (): Promise<(User & { password?: string })[]> => {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*');
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*');
 
-  if (error) {
-    console.error("Erro ao buscar usuários no Supabase:", error);
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    handleSupabaseError(error, "getUsers");
     return [];
   }
-  return data || [];
 };
 
 export const registerUser = async (user: User & { password?: string }): Promise<void> => {
-  const { error } = await supabase
-    .from('users')
-    .insert([user]);
+  try {
+    const { error } = await supabase
+      .from('users')
+      .insert([user]);
 
-  if (error) {
-    console.error("Erro ao registrar usuário no Supabase:", error);
-    throw error;
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, "registerUser");
   }
 };
 
 export const deleteUser = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('users')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error("Erro ao excluir usuário no Supabase:", error);
-    throw error;
+    if (error) throw error;
+  } catch (error) {
+    throw handleSupabaseError(error, "deleteUser");
   }
 };
