@@ -6,12 +6,12 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Cards from './pages/Cards';
 import Analysis from './pages/Analysis';
+import Reports from './pages/Reports';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Users from './pages/Users';
 import { getCurrentUser } from './services/storage';
 
-// Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const user = getCurrentUser();
   return user ? <>{children}</> : <Navigate to="/login" />;
@@ -40,6 +40,14 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
+        <Route path="/transacoes" element={
+          <ProtectedRoute>
+            <Layout>
+              <Transactions />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
         <Route path="/analise" element={
           <ProtectedRoute>
             <Layout>
@@ -48,10 +56,10 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="/transacoes" element={
+        <Route path="/relatorios" element={
           <ProtectedRoute>
             <Layout>
-              <Transactions />
+              <Reports />
             </Layout>
           </ProtectedRoute>
         } />
@@ -64,7 +72,6 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

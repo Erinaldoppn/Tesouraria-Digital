@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -12,10 +12,19 @@ import {
 } from 'lucide-react';
 import { getTransactions } from '../services/storage';
 import { MONTHS } from '../constants';
+import { Transaction } from '../types';
 
 const Cards: React.FC = () => {
-  const transactions = getTransactions();
-  const currentMonth = MONTHS[new Date().getMonth()];
+  // Fix: use state for transactions as getTransactions is asynchronous and returns a Promise
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const data = await getTransactions();
+      setTransactions(data);
+    };
+    load();
+  }, []);
 
   const stats = useMemo(() => {
     const now = new Date();

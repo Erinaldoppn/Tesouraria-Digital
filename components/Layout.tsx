@@ -14,7 +14,8 @@ import {
   Moon,
   LayoutGrid,
   BarChartHorizontal,
-  Users as UsersIcon
+  Users as UsersIcon,
+  FileText
 } from 'lucide-react';
 import { getCurrentUser, setCurrentUser } from '../services/storage';
 
@@ -46,12 +47,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/cards', label: 'Resumo em Cards', icon: <LayoutGrid size={20} /> },
-    { path: '/analise', label: 'Análise de Valores', icon: <BarChartHorizontal size={20} /> },
+    { path: '/cards', label: 'Resumo', icon: <LayoutGrid size={20} /> },
     { path: '/transacoes', label: 'Lançamentos', icon: <ReceiptText size={20} /> },
+    { path: '/analise', label: 'Análise', icon: <BarChartHorizontal size={20} /> },
+    { path: '/relatorios', label: 'Relatórios', icon: <FileText size={20} /> },
   ];
 
-  // Adiciona Gestão de Usuários apenas para admins
   if (isAdmin) {
     navItems.push({ path: '/usuarios', label: 'Usuários', icon: <UsersIcon size={20} /> });
   }
@@ -63,7 +64,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
-      {/* Estilos para Impressão */}
       <style>{`
         @media print {
           aside, nav, .print\\:hidden, button, header, .mobile-header { 
@@ -90,16 +90,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             display: block !important;
             position: static !important;
           }
-          .max-w-6xl { 
-            max-width: 100% !important; 
-            width: 100% !important;
-          }
-          .bg-white, .dark\\:bg-slate-900 { 
-            background: white !important; 
-            border: 1px solid #eee !important; 
-            box-shadow: none !important;
-            page-break-inside: avoid;
-          }
         }
       `}</style>
 
@@ -110,12 +100,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <span className="font-bold">3IPI Natal</span>
         </div>
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 bg-blue-800 dark:bg-slate-800 rounded-lg text-yellow-400"
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 text-yellow-400"><Sun size={20} /></button>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -136,26 +121,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               <h1 className="text-xl font-bold tracking-tight">3IPI Natal</h1>
             </div>
-            
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-blue-800 dark:hover:bg-slate-800 rounded-xl transition-colors text-yellow-400"
-              title={isDarkMode ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
-            >
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 text-yellow-400">
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-          </div>
-
-          <div className="mb-8 px-4 py-3 bg-blue-800/50 dark:bg-slate-800/50 rounded-xl border border-blue-700/50 dark:border-slate-700/50 flex items-center gap-3">
-             <div className={`p-2 rounded-full ${isAdmin ? 'bg-yellow-400 text-blue-900' : 'bg-blue-600 text-white'}`}>
-               {isAdmin ? <ShieldCheck size={16} /> : <UserIcon size={16} />}
-             </div>
-             <div className="overflow-hidden">
-               <p className="text-[10px] text-blue-300 dark:text-slate-400 font-black uppercase truncate tracking-widest">
-                 {isAdmin ? 'ADMINISTRADOR' : 'TESOUREIRO'}
-               </p>
-               <p className="text-sm font-bold truncate">{user?.name || 'Usuário'}</p>
-             </div>
           </div>
 
           <nav className="flex-1 space-y-2">
@@ -165,9 +133,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all
                   ${location.pathname === item.path 
-                    ? 'bg-yellow-400 text-blue-900 font-bold shadow-lg shadow-yellow-400/20' 
+                    ? 'bg-yellow-400 text-blue-900 font-bold shadow-lg shadow-yellow-400/20 scale-105' 
                     : 'hover:bg-blue-800 dark:hover:bg-slate-800 text-blue-100'}
                 `}
               >
@@ -177,30 +145,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             ))}
           </nav>
 
-          <button 
-            onClick={handleLogout}
-            className="mt-auto flex items-center gap-3 px-4 py-3 text-red-300 hover:bg-red-900/30 rounded-lg transition-colors font-bold uppercase tracking-widest text-[10px]"
-          >
-            <LogOut size={20} />
-            Encerrar Sessão
+          <div className="mt-8 px-4 py-3 bg-blue-800/50 rounded-xl flex items-center gap-3">
+             <div className="p-2 bg-yellow-400 text-blue-900 rounded-full"><UserIcon size={14} /></div>
+             <div className="overflow-hidden">
+               <p className="text-[10px] text-blue-300 font-black uppercase truncate">{user?.name || 'Usuário'}</p>
+             </div>
+          </div>
+
+          <button onClick={handleLogout} className="mt-4 flex items-center gap-3 px-4 py-3 text-red-300 hover:bg-red-900/30 rounded-lg transition-colors font-bold uppercase text-[10px]">
+            <LogOut size={20} /> Sair
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto main-content-area">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           {children}
         </div>
       </main>
 
-      {/* Overlay for mobile sidebar */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden print:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />}
     </div>
   );
 };

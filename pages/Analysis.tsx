@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   Cell, LabelList, Legend
@@ -16,9 +16,20 @@ import {
 } from 'lucide-react';
 import { getTransactions } from '../services/storage';
 import { MONTHS, COLORS } from '../constants';
+import { Transaction } from '../types';
 
 const Analysis: React.FC = () => {
-  const transactions = getTransactions();
+  // Fix: use state for transactions as getTransactions is asynchronous and returns a Promise
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const data = await getTransactions();
+      setTransactions(data);
+    };
+    load();
+  }, []);
+
   const currentMonthStr = MONTHS[new Date().getMonth()];
   const currentYear = new Date().getFullYear();
 
