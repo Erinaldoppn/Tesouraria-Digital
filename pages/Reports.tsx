@@ -111,7 +111,7 @@ const Reports: React.FC = () => {
             <div>
               <h2 className="text-2xl font-black text-blue-900 dark:text-white uppercase tracking-tighter">Igreja 3IPI Natal</h2>
               <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">3ª Igreja Presbiteriana Independente de Natal</p>
-              <p className="text-[10px] text-gray-400 font-medium">CNPJ: 00.000.000/0001-00</p>
+              <p className="text-[10px] text-gray-400 font-medium">CNPJ: 62.332.735/0001-70</p>
             </div>
           </div>
           <div className="text-right">
