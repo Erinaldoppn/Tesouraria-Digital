@@ -12,7 +12,8 @@ import {
   Lock, 
   ShieldAlert,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { getUsers, registerUser, deleteUser, getCurrentUser } from '../services/storage';
 import { User } from '../types';
@@ -22,6 +23,8 @@ const Users: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Dados do formulário
@@ -38,13 +41,21 @@ const Users: React.FC = () => {
     return <Navigate to="/" />;
   }
 
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const data = await getUsers();
+      setUsers(data);
+    } catch (err) {
+      console.error("Erro ao carregar usuários:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
   }, []);
-
-  const loadUsers = () => {
-    setUsers(getUsers());
-  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -59,47 +70,59 @@ const Users: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      password,
-      role
-    };
+    setIsSubmitting(true);
+    try {
+      const newUser = {
+        id: crypto.randomUUID(),
+        name,
+        email,
+        password,
+        role
+      };
 
-    registerUser(newUser);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setIsModalOpen(false);
-      setName('');
-      setEmail('');
-      setPassword('');
-      setRole('user');
-      loadUsers();
-    }, 1500);
+      await registerUser(newUser);
+      setShowSuccess(true);
+      
+      setTimeout(async () => {
+        setShowSuccess(false);
+        setIsModalOpen(false);
+        setName('');
+        setEmail('');
+        setPassword('');
+        setRole('user');
+        await loadUsers();
+      }, 1500);
+    } catch (err) {
+      alert("Erro ao salvar usuário no banco de dados.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (id === currentUser?.id) {
       alert("Você não pode excluir seu próprio acesso de administrador.");
       return;
     }
     
     if (confirm('Tem certeza que deseja revogar o acesso deste usuário?')) {
-      deleteUser(id);
-      loadUsers();
+      try {
+        await deleteUser(id);
+        await loadUsers();
+      } catch (err) {
+        alert("Erro ao excluir usuário.");
+      }
     }
   };
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = Array.isArray(users) ? users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   return (
     <div className="space-y-8 pb-10">
@@ -132,66 +155,73 @@ const Users: React.FC = () => {
       {/* Tabela de Usuários */}
       <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-400 dark:text-slate-500 uppercase text-[10px] font-black tracking-widest">
-              <tr>
-                <th className="px-8 py-5">Usuário</th>
-                <th className="px-8 py-5">E-mail</th>
-                <th className="px-8 py-5 text-center">Nível</th>
-                <th className="px-8 py-5 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-              {filteredUsers.map((u) => (
-                <tr key={u.id} className="group hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold">
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="font-bold text-gray-900 dark:text-white">{u.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className="text-sm text-gray-500 dark:text-slate-400">{u.email}</span>
-                  </td>
-                  <td className="px-8 py-5 text-center">
-                    <span className={`
-                      inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter
-                      ${u.role === 'admin' 
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' 
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'}
-                    `}>
-                      {u.role === 'admin' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
-                      {u.role === 'admin' ? 'Administrador' : 'Tesoureiro'}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <button 
-                      onClick={() => handleDeleteUser(u.id)}
-                      disabled={u.id === currentUser?.id}
-                      className={`
-                        p-2 rounded-xl transition-all
-                        ${u.id === currentUser?.id 
-                          ? 'text-gray-200 dark:text-slate-800 cursor-not-allowed' 
-                          : 'text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600'}
-                      `}
-                      title={u.id === currentUser?.id ? "Você não pode excluir seu próprio acesso" : "Remover Usuário"}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filteredUsers.length === 0 && (
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="animate-spin text-blue-900" size={32} />
+              <p className="font-black text-xs uppercase tracking-widest text-blue-900">Sincronizando Usuários...</p>
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-400 dark:text-slate-500 uppercase text-[10px] font-black tracking-widest">
                 <tr>
-                  <td colSpan={4} className="px-8 py-20 text-center text-gray-400 dark:text-slate-600 font-bold uppercase tracking-widest text-xs">
-                    Nenhum usuário encontrado.
-                  </td>
+                  <th className="px-8 py-5">Usuário</th>
+                  <th className="px-8 py-5">E-mail</th>
+                  <th className="px-8 py-5 text-center">Nível</th>
+                  <th className="px-8 py-5 text-right">Ações</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                {filteredUsers.map((u) => (
+                  <tr key={u.id} className="group hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold">
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">{u.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className="text-sm text-gray-500 dark:text-slate-400">{u.email}</span>
+                    </td>
+                    <td className="px-8 py-5 text-center">
+                      <span className={`
+                        inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter
+                        ${u.role === 'admin' 
+                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' 
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'}
+                      `}>
+                        {u.role === 'admin' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
+                        {u.role === 'admin' ? 'Administrador' : 'Tesoureiro'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <button 
+                        onClick={() => handleDeleteUser(u.id)}
+                        disabled={u.id === currentUser?.id}
+                        className={`
+                          p-2 rounded-xl transition-all
+                          ${u.id === currentUser?.id 
+                            ? 'text-gray-200 dark:text-slate-800 cursor-not-allowed' 
+                            : 'text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600'}
+                        `}
+                        title={u.id === currentUser?.id ? "Você não pode excluir seu próprio acesso" : "Remover Usuário"}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-8 py-20 text-center text-gray-400 dark:text-slate-600 font-bold uppercase tracking-widest text-xs">
+                      Nenhum usuário encontrado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -226,6 +256,7 @@ const Users: React.FC = () => {
                       <input 
                         type="text" 
                         required
+                        disabled={isSubmitting}
                         className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-blue-600 outline-none transition-all font-medium"
                         placeholder="Ex: João da Silva"
                         value={name}
@@ -242,6 +273,7 @@ const Users: React.FC = () => {
                       <input 
                         type="email" 
                         required
+                        disabled={isSubmitting}
                         className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-blue-600 outline-none transition-all font-medium"
                         placeholder="email@exemplo.com"
                         value={email}
@@ -258,6 +290,7 @@ const Users: React.FC = () => {
                       <input 
                         type="password" 
                         required
+                        disabled={isSubmitting}
                         className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-blue-600 outline-none transition-all font-medium"
                         placeholder="••••••••"
                         value={password}
@@ -272,6 +305,7 @@ const Users: React.FC = () => {
                     <select 
                       className="w-full p-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white focus:border-blue-600 outline-none font-bold"
                       value={role}
+                      disabled={isSubmitting}
                       onChange={(e) => setRole(e.target.value as 'admin' | 'user')}
                     >
                       <option value="user">Tesoureiro (Leitura/Relatórios)</option>
@@ -282,9 +316,11 @@ const Users: React.FC = () => {
                   <div className="pt-4 space-y-3">
                     <button 
                       type="submit"
-                      className="w-full bg-blue-900 text-white font-black py-4 rounded-2xl hover:bg-blue-800 active:scale-95 transition-all shadow-xl border-b-4 border-blue-950 uppercase tracking-widest text-xs"
+                      disabled={isSubmitting}
+                      className="w-full bg-blue-900 text-white font-black py-4 rounded-2xl hover:bg-blue-800 active:scale-95 transition-all shadow-xl border-b-4 border-blue-950 uppercase tracking-widest text-xs flex items-center justify-center gap-2"
                     >
-                      Registrar Acesso
+                      {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : null}
+                      {isSubmitting ? 'Registrando...' : 'Registrar Acesso'}
                     </button>
                     <p className="text-center text-[9px] text-gray-400 font-bold uppercase tracking-widest">
                       O usuário poderá logar imediatamente após o registro.
