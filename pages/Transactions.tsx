@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Plus, Search, Trash2, Edit3, X, Image as ImageIcon,
-  CheckCircle2, Printer, Eye, Paperclip, FileUp, Target, Download, ChevronLeft, ChevronRight, User as UserIcon, Calendar
+  CheckCircle2, Printer, Eye, Paperclip, FileUp, Target, Download, 
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, User as UserIcon, Calendar
 } from 'lucide-react';
 import { 
   getTransactions, 
@@ -69,6 +70,11 @@ const Transactions: React.FC = () => {
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage) || 1;
   const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Reset page when filtering or searching
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType]);
 
   const handleOpenModal = (transaction?: Transaction) => {
     setActiveTab('dados');
@@ -252,11 +258,65 @@ const Transactions: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-between items-center px-4 print:hidden">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Página {currentPage} de {totalPages}</p>
-        <div className="flex gap-2">
-          <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30"><ChevronLeft size={16} /></button>
-          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30"><ChevronRight size={16} /></button>
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 print:hidden">
+        <div className="flex flex-col">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Página {currentPage} de {totalPages}</p>
+          <p className="text-[9px] font-bold text-blue-600 uppercase">Total de {filteredTransactions.length} registros</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            disabled={currentPage === 1} 
+            onClick={() => setCurrentPage(1)} 
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+            title="Primeira Página"
+          >
+            <ChevronsLeft size={16} />
+          </button>
+          <button 
+            disabled={currentPage === 1} 
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} 
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+            title="Página Anterior"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          
+          <div className="flex gap-1">
+             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+               let pageNum;
+               if (totalPages <= 5) pageNum = i + 1;
+               else if (currentPage <= 3) pageNum = i + 1;
+               else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+               else pageNum = currentPage - 2 + i;
+
+               return (
+                 <button 
+                   key={pageNum}
+                   onClick={() => setCurrentPage(pageNum)}
+                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black transition-all ${currentPage === pageNum ? 'bg-blue-900 text-white shadow-md' : 'bg-white dark:bg-slate-900 text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-100 dark:border-slate-800'}`}
+                 >
+                   {pageNum}
+                 </button>
+               );
+             })}
+          </div>
+
+          <button 
+            disabled={currentPage === totalPages} 
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} 
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+            title="Próxima Página"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <button 
+            disabled={currentPage === totalPages} 
+            onClick={() => setCurrentPage(totalPages)} 
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 disabled:opacity-30 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors"
+            title="Última Página"
+          >
+            <ChevronsRight size={16} />
+          </button>
         </div>
       </div>
 
