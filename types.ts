@@ -11,6 +11,7 @@ export interface Transaction {
   data: string;
   mes: string;
   responsavel: string;
+  contribuinte?: string; // Nome de quem fez a contribuição ou recebeu o pagamento
   projeto?: string; // Nome da campanha ou departamento
   comprovante?: string; // Base64 or URL
   observacoes?: string;
