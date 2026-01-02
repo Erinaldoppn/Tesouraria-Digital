@@ -9,7 +9,6 @@ const SignUp: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'user'>('user');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,11 +56,11 @@ const SignUp: React.FC = () => {
         name,
         email,
         password,
-        role
+        role: 'user' as const // Agora todo cadastro público é obrigatoriamente 'user'
       };
       
       await registerUser(newUser);
-      alert('Conta de Tesouraria criada com sucesso!');
+      alert('Solicitação de acesso enviada com sucesso! Agora você pode fazer login como Tesoureiro.');
       navigate('/login');
     } catch (err) {
       alert('Erro ao criar conta no banco de dados.');
@@ -101,34 +100,23 @@ const SignUp: React.FC = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-black text-blue-900 uppercase tracking-widest px-1">Nível de Acesso</label>
-            <div className="relative">
-              <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <select 
-                value={role} 
-                onChange={(e) => setRole(e.target.value as 'admin' | 'user')}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 bg-gray-50 font-bold text-gray-800 outline-none focus:border-blue-600 transition-all appearance-none cursor-pointer"
-              >
-                <option value="user">Tesoureiro (Visualização/Exportação)</option>
-                <option value="admin">Administrador (Acesso Total)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
             <label className="text-xs font-black text-blue-900 uppercase tracking-widest px-1">E-mail Administrativo</label>
             <div className="relative">
               <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${errors.email ? 'text-red-400' : 'text-gray-400'}`} size={18} />
               <input type="email" className={getInputClass('email')} placeholder="tesouraria@3ipi.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
+            {errors.email && <p className="text-[10px] font-black text-red-600 px-1">{errors.email}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative">
               <label className="text-xs font-black text-blue-900 uppercase tracking-widest px-1">Senha</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input type={showPassword ? "text" : "password"} className={getInputClass('password')} placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -139,10 +127,16 @@ const SignUp: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {(errors.password || errors.confirmPassword) && (
+            <p className="text-[10px] font-black text-red-600 px-1">
+              {errors.password || errors.confirmPassword}
+            </p>
+          )}
 
           <div className="pt-2">
-            <button type="submit" disabled={isSubmitting} className="w-full bg-blue-800 text-white font-black py-4 rounded-2xl hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-900/20 uppercase tracking-[0.1em] text-sm flex items-center justify-center gap-2">
-              {isSubmitting ? 'Processando...' : 'Criar Acesso'}
+            <button type="submit" disabled={isSubmitting} className="w-full bg-blue-800 text-white font-black py-4 rounded-2xl hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-900/20 uppercase tracking-[0.1em] text-sm flex items-center justify-center gap-2 border-b-4 border-blue-950">
+              {isSubmitting ? 'Processando...' : 'Solicitar Acesso'}
             </button>
           </div>
 
@@ -150,6 +144,13 @@ const SignUp: React.FC = () => {
              <Link to="/login" className="text-sm text-gray-400 hover:text-blue-800 font-bold transition-colors">
               Já possui uma conta? <span className="text-blue-800 underline">Fazer login</span>
             </Link>
+          </div>
+          
+          <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex items-start gap-3 mt-4">
+            <ShieldCheck size={20} className="text-blue-600 shrink-0 mt-0.5" />
+            <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase">
+              Nota: Novos cadastros via web são configurados automaticamente como perfil de Tesoureiro. Para acessos de Administrador, contate o conselho.
+            </p>
           </div>
         </form>
       </div>
